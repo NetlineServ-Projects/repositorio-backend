@@ -78,3 +78,20 @@ exports.getUserById = async (id) => {
         }
     });
 };
+
+// DELETE USER BY ID (Adicionado e ajustado para prisma.usuario)
+exports.deleteUserById = async (id) => {
+    try {
+        return await prisma.usuario.delete({
+            where: { 
+                id: Number(id) // Mantém o Number(id) caso o seu ID seja Int, remova o Number() se for String/UUID
+            }
+        });
+    } catch (error) {
+        // P2025 é o erro padrão do Prisma para "registro não encontrado"
+        if (error.code === 'P2025') {
+            throw new Error("Utilizador não encontrado");
+        }
+        throw error;
+    }
+};
