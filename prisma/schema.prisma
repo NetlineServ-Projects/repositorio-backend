@@ -12,22 +12,73 @@ model Usuario {
   nome        String
   email       String       @unique
   senha       String
-  perfil      Perfil       @default(ADMIN)
+  perfil      Perfil       @default(FUNCIONARIO)
   dataCriacao DateTime     @default(now())
 
-  funcionario Funcionario?
+  documentos   Documento[]
 }
 
-model Funcionario {
-  id          Int      @id @default(autoincrement())
-  telefone    String?
-  dataCriacao DateTime @default(now())
+model Documento{
+ id              Int       @id @default(autoincrement())
+  titulo          String
+  descricao       String?
+  nomeArquivo     String
+  caminho       String          // O caminho real ou URL no servidor (ex: "storage/uploads/xyz-123.pdf")
+  tipoArquivo     String
+  tamanho         BigInt
+  estado          EstadoDocumento @default(PENDENTE)
+  dataSubmissao   DateTime @default(now())
 
-  usuarioId   Int      @unique
-  usuario     Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId    Int
+  usuario      Usuario @relation(fields: [usuarioId], references: [id])
+
+  categoriaId     Int
+  categoria        Categoria @relation(fields: [categoriaId], references: [id])
+
+  // Relação opcional com Sistema (um documento pode ou não pertencer a um sistema)
+  sistemaId     Int?
+  sistema       Sistema?        @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
+
+}
+
+model Categoria {
+  id          Int      @id @default(autoincrement())
+  nome        String   @unique
+  descricao   String?
+
+  documentos  Documento[]
+}
+
+model Sistema {
+  id               Int           @id @default(autoincrement())
+  nome             String        @db.VarChar(255)
+  desenvolvedores  Json          
+  empresasClientes Json          
+  descricaoCurta   String?       @db.VarChar(255) // Resumo para os cartões
+  descricaoLonga   String?       @db.Text         // Objetivo real do sistema
+  dataInicio       DateTime                       // Início do desenvolvimento
+  dataEntrega      DateTime?                      // Data da entrega aos clientes
+  status           StatusSistema @default(EM_DESENVOLVIMENTO)
+  tecnologias      Json?                          // Ex: ["React", "TypeScript", "MySQL"]
+  documentos       Documento[]   // Ficheiros/manuais associados ao sistema
+  dataCriacao      DateTime      @default(now())
+
+  @@map("sistemas")
+}
+
+enum EstadoDocumento {
+  PENDENTE
+  APROVADO
+  REJEITADO
 }
 
 enum Perfil {
   ADMIN
   FUNCIONARIO
+}
+
+enum StatusSistema {
+  EM_PRODUCAO       @map("Em Produção")
+  EM_DESENVOLVIMENTO @map("Em Desenvolvimento")
+  MANUTENCAO        @map("Manutenção")
 }

@@ -3,7 +3,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 // REGISTER
-exports.register = async ({ nome, email, senha }) => {
+exports.register = async ({ nome, email, senha, perfil }) => {
+    // 1. Verifica se o email já existe
     const userExists = await prisma.usuario.findUnique({
         where: { email }
     });
@@ -12,23 +13,27 @@ exports.register = async ({ nome, email, senha }) => {
         throw new Error("Este email já está registado");
     }
 
+    // 2. Hash da palavra-passe
     const senhaHash = await bcrypt.hash(senha, 10);
 
+    // 3. Cria o utilizador com perfil definido (ou "USER" por defeito)
     const user = await prisma.usuario.create({
         data: {
             nome,
             email,
-            senha: senhaHash
+            senha: senhaHash,
+            perfil: perfil || "FUNCIONARIO" // 👈 Atribui um perfil valor padrão se não vier nenhum
         }
     });
 
+    // 4. Retorna os dados do utilizador (incluindo o perfil) sem expor a senha
     return {
         id: user.id,
         nome: user.nome,
-        email: user.email
+        email: user.email,
+        perfil: user.perfil
     };
 };
-
 // LOGIN
 exports.login = async ({ email, senha }) => {
     const user = await prisma.usuario.findUnique({
@@ -45,11 +50,13 @@ exports.login = async ({ email, senha }) => {
         throw new Error("Senha inválida");
     }
 
+    // 🎯 INCLUÍMOS O PERFIL NO TOKEN JWT
     const token = jwt.sign(
         {
             id: user.id,
             email: user.email,
-            nome: user.nome
+            nome: user.nome,
+            perfil: user.perfil // 👈 Linha crucial adicionada aqui!
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
@@ -60,7 +67,8 @@ exports.login = async ({ email, senha }) => {
         user: {
             id: user.id,
             nome: user.nome,
-            email: user.email
+            email: user.email,
+            perfil: user.perfil // 👈 Também retornamos o perfil no objeto user
         }
     };
 };

@@ -25,8 +25,9 @@ module.exports = (req, res, next) => {
         // 4. Verifica se o token é válido
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // 5. Guarda os dados do utilizador dentro da requisição
+        // 5. Guarda os dados em req.user E req.usuario para evitar incompatibilidades
         req.user = decoded;
+        req.usuario = decoded; 
 
         // 6. Continua para a próxima função
         next();
