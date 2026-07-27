@@ -21,7 +21,7 @@ class SistemaService {
           select: { documentos: true }
         }
       },
-      orderBy: { dataCriacao: 'desc' } // ✅ Corrigido para dataCriacao
+      orderBy: { dataCriacao: 'desc' } 
     });
 
     return sistemas.map((sis) => ({
@@ -39,7 +39,7 @@ class SistemaService {
         nome: dados.nome,
         descricaoCurta: dados.descricaoCurta || null,
         descricaoLonga: dados.descricaoLonga || null,
-        status: mapStatusToEnum(dados.status), // ✅ Mapeado corretamente para o Enum
+        status: mapStatusToEnum(dados.status),
         dataInicio: dados.dataInicio ? new Date(dados.dataInicio) : null,
         dataEntrega: dados.dataEntrega ? new Date(dados.dataEntrega) : null,
         desenvolvedores: dados.desenvolvedores || [],
@@ -56,7 +56,7 @@ class SistemaService {
         nome: dados.nome,
         descricaoCurta: dados.descricaoCurta || null,
         descricaoLonga: dados.descricaoLonga || null,
-        status: mapStatusToEnum(dados.status), // ✅ Mapeado corretamente para o Enum
+        status: mapStatusToEnum(dados.status), 
         dataInicio: dados.dataInicio ? new Date(dados.dataInicio) : null,
         dataEntrega: dados.dataEntrega ? new Date(dados.dataEntrega) : null,
         desenvolvedores: dados.desenvolvedores || [],

@@ -89,11 +89,9 @@ exports.rejeitarDocumento = async (req, res) => {
     }
 };
 
-// --- MÉTODOS DE ATUALIZAÇÃO / LIXEIRA / ELIMINAÇÃO ---
 
-/**
- * Atualiza um documento (Geral ou Mudar Estado: "LIXEIRA", "APROVADO", etc.)
- */
+
+// MÉTODOS DE ATUALIZAÇÃO / LIXEIRA / ELIMINAÇÃO 
 exports.atualizarDocumento = async (req, res) => {
     try {
         const { id } = req.params;
@@ -121,9 +119,8 @@ exports.atualizarDocumento = async (req, res) => {
     }
 };
 
-/**
- * Elimina permanentemente o documento do banco de dados
- */
+// Elimina permanentemente o documento do banco de dados
+ 
 exports.eliminarDocumento = async (req, res) => {
     try {
         const { id } = req.params;

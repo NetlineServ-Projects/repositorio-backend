@@ -1,7 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-// Controller para listar todas as categorias
+
 const listarCategorias = async (req, res) => {
   try {
     const categorias = await prisma.categoria.findMany({

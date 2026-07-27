@@ -50,7 +50,7 @@ exports.me = async (req, res) => {
     }
 };
 
-// DELETE CURRENT (Adicionado aqui)
+// DELETE CURRENT 
 exports.deleteCurrent = async (req, res) => {
     try {
         const userId = req.user?.id;

@@ -22,7 +22,7 @@ exports.register = async ({ nome, email, senha, perfil }) => {
             nome,
             email,
             senha: senhaHash,
-            perfil: perfil || "FUNCIONARIO" // 👈 Atribui um perfil valor padrão se não vier nenhum
+            perfil: perfil || "FUNCIONARIO" 
         }
     });
 
@@ -56,7 +56,7 @@ exports.login = async ({ email, senha }) => {
             id: user.id,
             email: user.email,
             nome: user.nome,
-            perfil: user.perfil // 👈 Linha crucial adicionada aqui!
+            perfil: user.perfil 
         },
         process.env.JWT_SECRET,
         { expiresIn: "1d" }
@@ -68,7 +68,7 @@ exports.login = async ({ email, senha }) => {
             id: user.id,
             nome: user.nome,
             email: user.email,
-            perfil: user.perfil // 👈 Também retornamos o perfil no objeto user
+            perfil: user.perfil 
         }
     };
 };
@@ -87,16 +87,15 @@ exports.getUserById = async (id) => {
     });
 };
 
-// DELETE USER BY ID (Adicionado e ajustado para prisma.usuario)
+
 exports.deleteUserById = async (id) => {
     try {
         return await prisma.usuario.delete({
             where: { 
-                id: Number(id) // Mantém o Number(id) caso o seu ID seja Int, remova o Number() se for String/UUID
+                id: Number(id) 
             }
         });
     } catch (error) {
-        // P2025 é o erro padrão do Prisma para "registro não encontrado"
         if (error.code === 'P2025') {
             throw new Error("Utilizador não encontrado");
         }

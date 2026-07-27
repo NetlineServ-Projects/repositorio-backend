@@ -25,7 +25,7 @@ router.put("/:id/aprovar", documentoController.aprovarDocumento);
 // Rejeitar documento
 router.put("/:id/rejeitar", documentoController.rejeitarDocumento);
 
-// --- ROTAS QUE FALTAVAM ---
+
 
 // Atualizar documento (editar título ou mudar status para "Lixeira", "Aprovado", etc.)
 router.put("/:id", authMiddleware, documentoController.atualizarDocumento);
