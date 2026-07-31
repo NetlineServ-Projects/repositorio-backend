@@ -1,5 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma");
 
 exports.criarDocumento = async (dados, usuario) => {
   if (!dados.categoriaId) {
@@ -30,7 +29,9 @@ exports.criarDocumento = async (dados, usuario) => {
       estado: "PENDENTE", // Estado inicial padrão
     },
     include: {
-      categoria: true,
+      categoria: {
+        select:{nome:true}
+      }, 
       usuario: {
         select: { id: true, nome: true, email: true },
       },

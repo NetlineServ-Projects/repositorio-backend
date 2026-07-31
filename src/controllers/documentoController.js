@@ -1,21 +1,17 @@
 const documentoService = require("../services/documentoService");
+const HTTP = require("../utils/httpsStatus");
+const MSG = require("../utils/messages");
+const response = require("../utils/response");
 
-exports.criarDocumento = async (req, res) => {
+exports.criarDocumento = async (req, res, next) => {
     try {
-        // 1. Pega o utilizador do middleware (suporta req.usuario e req.user)
-        const usuario = req.usuario || req.user;
+        const usuario = req.user;
 
-        if (!usuario) {
-            return res.status(401).json({ mensagem: "Utilizador não autenticado." });
-        }
-
-        // 2. Pega o ficheiro do Multer
         const ficheiro = req.file;
         if (!ficheiro) {
-            return res.status(400).json({ mensagem: "Nenhum ficheiro foi enviado." });
+            return response.error(res, "Nenhum ficheiro foi enviado.", HTTP.BAD_REQUEST);
         }
 
-        // 3. Monta o objeto de dados a passar para o Service
         const dadosDocumento = {
             titulo: req.body.titulo,
             descricao: req.body.descricao,
@@ -26,118 +22,76 @@ exports.criarDocumento = async (req, res) => {
             categoriaId: req.body.categoriaId
         };
 
-        // 4. Chama o serviço passando (dados, usuario)
         const documentoCriado = await documentoService.criarDocumento(dadosDocumento, usuario);
 
-        return res.status(201).json({
-            mensagem: "Documento registado com sucesso!",
-            documento: documentoCriado
-        });
-
+        return response.success(res, MSG.DOCUMENTO.CREATED, documentoCriado, HTTP.CREATED);
     } catch (error) {
-        console.error("Erro no controller (criarDocumento):", error);
-        return res.status(400).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-exports.listarDocumentos = async (req, res) => {
+exports.listarDocumentos = async (req, res, next) => {
     try {
         const documentos = await documentoService.listarDocumentos();
-        return res.status(200).json(documentos);
+        return response.success(res, null, documentos, HTTP.OK);
     } catch (error) {
-        return res.status(400).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-exports.buscarDocumentoPorId = async (req, res) => {
+exports.buscarDocumentoPorId = async (req, res, next) => {
     try {
         const { id } = req.params;
         const documento = await documentoService.buscarDocumentoPorId(id);
-        return res.status(200).json(documento);
+        return response.success(res, null, documento, HTTP.OK);
     } catch (error) {
-        return res.status(404).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-exports.aprovarDocumento = async (req, res) => {
+exports.aprovarDocumento = async (req, res, next) => {
     try {
         const { id } = req.params;
         const documento = await documentoService.aprovarDocumento(id);
-        return res.status(200).json(documento);
+        return response.success(res, MSG.DOCUMENTO.APPROVED, documento, HTTP.OK);
     } catch (error) {
-        return res.status(400).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-exports.rejeitarDocumento = async (req, res) => {
+exports.rejeitarDocumento = async (req, res, next) => {
     try {
         const { id } = req.params;
         const documento = await documentoService.rejeitarDocumento(id, req.body);
-        return res.status(200).json(documento);
+        return response.success(res, MSG.DOCUMENTO.REJECTED, documento, HTTP.OK);
     } catch (error) {
-        return res.status(400).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-
-
-// MÉTODOS DE ATUALIZAÇÃO / LIXEIRA / ELIMINAÇÃO 
-exports.atualizarDocumento = async (req, res) => {
+exports.atualizarDocumento = async (req, res, next) => {
     try {
         const { id } = req.params;
         const dadosAtualizacao = req.body;
 
-        if (!id) {
-            return res.status(400).json({ mensagem: "O ID do documento é obrigatório." });
-        }
-
         if (!dadosAtualizacao || Object.keys(dadosAtualizacao).length === 0) {
-            return res.status(400).json({ mensagem: "Nenhum dado fornecido para atualização." });
+            return response.error(res, "Nenhum dado fornecido para atualização.", HTTP.BAD_REQUEST);
         }
 
         const documentoAtualizado = await documentoService.atualizarDocumento(id, dadosAtualizacao);
 
-        return res.status(200).json({
-            mensagem: "Documento atualizado com sucesso!",
-            documento: documentoAtualizado
-        });
+        return response.success(res, MSG.DOCUMENTO.UPDATED, documentoAtualizado, HTTP.OK);
     } catch (error) {
-        console.error("Erro no controller (atualizarDocumento):", error);
-        return res.status(400).json({
-            mensagem: error.message || "Erro ao atualizar documento."
-        });
+        next(error);
     }
 };
 
-// Elimina permanentemente o documento do banco de dados
- 
-exports.eliminarDocumento = async (req, res) => {
+exports.eliminarDocumento = async (req, res, next) => {
     try {
         const { id } = req.params;
-
-        if (!id) {
-            return res.status(400).json({ mensagem: "O ID do documento é obrigatório." });
-        }
-
         await documentoService.eliminarDocumento(id);
-
-        return res.status(200).json({
-            mensagem: "Documento eliminado definitivamente com sucesso."
-        });
+        return response.success(res, MSG.DOCUMENTO.DELETED, null, HTTP.OK);
     } catch (error) {
-        console.error("Erro no controller (eliminarDocumento):", error);
-        return res.status(400).json({
-            mensagem: error.message || "Erro ao eliminar documento."
-        });
+        next(error);
     }
 };

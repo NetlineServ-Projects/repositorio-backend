@@ -4,30 +4,44 @@ const router = express.Router();
 const upload = require("../config/multer");
 const documentoController = require("../controllers/documentoController");
 const authMiddleware = require("../middlewares/authMiddleware");
+const authorize = require("../middlewares/roleMiddleware");
+const validate = require("../validators/validate");
 
-// Criar documento
+const { createDocumentoSchema } = require("../validators/documentoValidator");
+const ROLES = require("../constants/roles");
+
+// Criar documento (qualquer utilizador autenticado)
 router.post(
   "/",
   authMiddleware,
   upload.single("ficheiro"),
+  validate(createDocumentoSchema),
   documentoController.criarDocumento
 );
 
-// Listar documentos
-router.get("/", documentoController.listarDocumentos);
+// Listar documentos (qualquer utilizador autenticado)
+router.get("/", authMiddleware, documentoController.listarDocumentos);
 
-// Buscar documento por ID
-router.get("/:id", documentoController.buscarDocumentoPorId);
+// Buscar documento por ID (qualquer utilizador autenticado)
+router.get("/:id", authMiddleware, documentoController.buscarDocumentoPorId);
 
-// Aprovar documento
-router.put("/:id/aprovar", documentoController.aprovarDocumento);
+// Aprovar documento — só ADMIN
+router.put(
+  "/:id/aprovar",
+  authMiddleware,
+  authorize(ROLES.ADMIN),
+  documentoController.aprovarDocumento
+);
 
-// Rejeitar documento
-router.put("/:id/rejeitar", documentoController.rejeitarDocumento);
+// Rejeitar documento — só ADMIN
+router.put(
+  "/:id/rejeitar",
+  authMiddleware,
+  authorize(ROLES.ADMIN),
+  documentoController.rejeitarDocumento
+);
 
-
-
-// Atualizar documento (editar título ou mudar status para "Lixeira", "Aprovado", etc.)
+// Atualizar documento (editar título, mudar estado, etc.)
 router.put("/:id", authMiddleware, documentoController.atualizarDocumento);
 
 // Apagar documento definitivamente da base de dados

@@ -1,24 +1,14 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const categoriaService = require("../services/categoriaService");
+const HTTP = require("../utils/httpsStatus");
+const response = require("../utils/response");
 
-
-const listarCategorias = async (req, res) => {
-  try {
-    const categorias = await prisma.categoria.findMany({
-      orderBy: {
-        nome: "asc", // Ordena as categorias de A a Z
-      },
-    });
-
-    return res.status(200).json(categorias);
-  } catch (error) {
-    console.error("Erro ao listar categorias:", error);
-    return res.status(500).json({ 
-      error: "Erro interno do servidor ao buscar as categorias." 
-    });
-  }
+exports.listarCategorias = async (req, res, next) => {
+    try {
+        const categorias = await categoriaService.listarCategorias();
+        return response.success(res, null, categorias, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
 };
 
-module.exports = {
-  listarCategorias,
-};
+module.exports = { listarCategorias: exports.listarCategorias };

@@ -1,40 +1,44 @@
 const jwt = require("jsonwebtoken");
 
-module.exports = (req, res, next) => {
-    // 1. Pega o token do header Authorization
+const HTTP = require("../utils/httpsStatus");
+const MSG = require("../utils/messages");
+
+function authenticate(req, res, next) {
+    // 1. Obtém o header Authorization
     const authHeader = req.headers.authorization;
 
     // 2. Verifica se o token foi enviado
     if (!authHeader) {
-        return res.status(401).json({
-            mensagem: "Token não fornecido"
+        return res.status(HTTP.UNAUTHORIZED).json({
+            mensagem: MSG.AUTH.TOKEN_NOT_PROVIDED
         });
     }
 
-    // 3. Divide o header e verifica se segue o padrão "Bearer <token>"
-    const parts = authHeader.split(" ");
-    if (parts.length !== 2 || parts[0] !== "Bearer") {
-        return res.status(401).json({
-            mensagem: "Erro no formato do token. Use o formato: Bearer <token>"
+    // 3. Verifica se o formato é "Bearer <token>"
+    const [tipo, token] = authHeader.split(" ");
+
+    if (tipo !== "Bearer" || !token) {
+        return res.status(HTTP.UNAUTHORIZED).json({
+            mensagem: MSG.AUTH.INVALID_TOKEN_FORMAT
         });
     }
-
-    const token = parts[1];
 
     try {
-        // 4. Verifica se o token é válido
+        // 4. Verifica e descodifica o token
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-        // 5. Guarda os dados em req.user E req.usuario para evitar incompatibilidades
+        // 5. Guarda os dados do utilizador
         req.user = decoded;
-        req.usuario = decoded; 
 
-        // 6. Continua para a próxima função
+        // 6. Continua para o próximo middleware/controller
         next();
 
     } catch (error) {
-        return res.status(401).json({
-            mensagem: "Token inválido ou expirado"
+        console.error("Erro JWT:", error.message);
+        return res.status(HTTP.UNAUTHORIZED).json({
+            mensagem: MSG.AUTH.INVALID_OR_EXPIRED_TOKEN
         });
     }
-};
+}
+
+module.exports = authenticate;

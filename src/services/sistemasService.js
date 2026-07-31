@@ -1,12 +1,11 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma");
 
 // Mapeia os status que vêm do Frontend para o Enum do Prisma Schema
 const mapStatusToEnum = (status) => {
   const statusMap = {
     "Em Desenvolvimento": "EM_DESENVOLVIMENTO",
     "Em Produção": "EM_PRODUCAO",
-    "Manutenção": "EM_MANUTENCAO"
+    "Manutenção": "MANUTENCAO"
   };
 
   // Retorna o Enum correspondente ou mantém o valor padrão

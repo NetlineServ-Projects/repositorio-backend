@@ -1,20 +1,25 @@
 const multer = require("multer");
 const path = require("path");
+const { gerarNomeArquivo } = require("../utils/fileHelper");
 
-// Configuração do armazenamento em disco
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Pasta onde os ficheiros serão guardados no servidor
     cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
-    // Gera um nome único para evitar sobrepor ficheiros com o mesmo nome
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+    cb(null, gerarNomeArquivo(file.originalname, ext)); 
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = /pdf|doc|docx|xls|xlsx|png|jpg|jpeg/;
+    const extValida = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
+    cb(null, extValida);
+  },
+});
 
 module.exports = upload;

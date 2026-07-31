@@ -12,7 +12,10 @@ model Usuario {
   nome        String
   email       String       @unique
   senha       String
+  numero      String       @default("")
+  cargo       String       @default("")
   perfil      Perfil       @default(FUNCIONARIO)
+  ativo       Boolean      @default(true)
   dataCriacao DateTime     @default(now())
 
   documentos   Documento[]
@@ -23,11 +26,12 @@ model Documento{
   titulo          String
   descricao       String?
   nomeArquivo     String
-  caminho       String          // O caminho real ou URL no servidor (ex: "storage/uploads/xyz-123.pdf")
+  caminho         String          // O caminho real ou URL no servidor (ex: "storage/uploads/xyz-123.pdf")
   tipoArquivo     String
   tamanho         BigInt
   estado          EstadoDocumento @default(PENDENTE)
   dataSubmissao   DateTime @default(now())
+  motivoRejeicao  String? 
 
   usuarioId    Int
   usuario      Usuario @relation(fields: [usuarioId], references: [id])

@@ -3,21 +3,18 @@ const router = express.Router();
 
 const authController = require("../controllers/authController");
 const authMiddleware = require("../middlewares/authMiddleware");
+const validate = require("../validators/validate");
 
-// =======================
-// ROTAS DE AUTENTICAÇÃO
-// =======================
+const { loginSchema, alterarSenhaSchema } = require("../validators/authValidator");
 
-// Rota de cadastro (pública)
-router.post("/register", authController.register);
+// Login (rota pública)
+router.post("/login", validate(loginSchema), authController.login);
 
-// Rota de login (pública)
-router.post("/login", authController.login);
-
-// Rota do perfil (protegida por Token JWT)
+// Dados do utilizador autenticado
 router.get("/me", authMiddleware, authController.me);
 
-// Rota para eliminar a conta (protegida por Token JWT)
-router.delete("/delete-current", authMiddleware, authController.deleteCurrent);
+// Alterar senha (opcional, feito pelo próprio utilizador autenticado)
+router.put("/senha", authMiddleware, validate(alterarSenhaSchema), authController.alterarSenha);
+
 
 module.exports = router;

@@ -1,57 +1,57 @@
-const sistemaService = require('../services/sistemasService');
+const sistemaService = require("../services/sistemasService");
+const HTTP = require("../utils/httpsStatus");
+const MSG = require("../utils/messages");
+const response = require("../utils/response");
 
 class SistemaController {
-  async listar(req, res) {
+  async listar(req, res, next) {
     try {
       const sistemas = await sistemaService.listarTodos();
-      return res.status(200).json(sistemas);
+      return response.success(res, null, sistemas, HTTP.OK);
     } catch (error) {
-      console.error('Erro ao listar sistemas:', error);
-      return res.status(500).json({ error: 'Erro ao listar sistemas.' });
+      next(error);
     }
   }
 
-  async criar(req, res) {
+  async criar(req, res, next) {
     try {
-      if (!req.body.nome) return res.status(400).json({ error: 'Nome é obrigatório.' });
       const novoSistema = await sistemaService.criar(req.body);
-      return res.status(201).json(novoSistema);
+      return response.success(res, MSG.SISTEMA.CREATED, novoSistema, HTTP.CREATED);
     } catch (error) {
-      console.error('Erro ao criar sistema:', error);
-      return res.status(500).json({ error: 'Erro ao criar sistema.' });
+      next(error);
     }
   }
 
-  async atualizar(req, res) {
+  async atualizar(req, res, next) {
     try {
       const { id } = req.params;
       const sistemaAtualizado = await sistemaService.atualizar(id, req.body);
-      return res.status(200).json(sistemaAtualizado);
+      return response.success(res, MSG.SISTEMA.UPDATED, sistemaAtualizado, HTTP.OK);
     } catch (error) {
-      console.error('Erro ao atualizar sistema:', error);
-      return res.status(500).json({ error: 'Erro ao atualizar sistema.' });
+      next(error);
     }
   }
 
-  async apagar(req, res) {
+  async apagar(req, res, next) {
     try {
       const { id } = req.params;
       await sistemaService.apagar(id);
-      return res.status(200).json({ message: 'Sistema removido com sucesso.' });
+      return response.success(res, MSG.SISTEMA.DELETED, null, HTTP.OK);
     } catch (error) {
-      console.error('Erro ao apagar sistema:', error);
-      return res.status(500).json({ error: 'Erro ao apagar sistema.' });
+      next(error);
     }
   }
 
-  async obterPorId(req, res) {
+  async obterPorId(req, res, next) {
     try {
       const { id } = req.params;
       const sistema = await sistemaService.obterPorId(id);
-      if (!sistema) return res.status(404).json({ error: 'Sistema não encontrado.' });
-      return res.status(200).json(sistema);
+      if (!sistema) {
+        return response.error(res, MSG.SISTEMA.NOT_FOUND, HTTP.NOT_FOUND);
+      }
+      return response.success(res, null, sistema, HTTP.OK);
     } catch (error) {
-      return res.status(500).json({ error: 'Erro ao obter detalhes.' });
+      next(error);
     }
   }
 }

@@ -2,103 +2,103 @@ const prisma = require("../config/prisma");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-// REGISTER
-exports.register = async ({ nome, email, senha, perfil }) => {
-    // 1. Verifica se o email já existe
-    const userExists = await prisma.usuario.findUnique({
-        where: { email }
-    });
+const MSG = require("../utils/messages");
 
-    if (userExists) {
-        throw new Error("Este email já está registado");
-    }
-
-    // 2. Hash da palavra-passe
-    const senhaHash = await bcrypt.hash(senha, 10);
-
-    // 3. Cria o utilizador com perfil definido (ou "USER" por defeito)
-    const user = await prisma.usuario.create({
-        data: {
-            nome,
-            email,
-            senha: senhaHash,
-            perfil: perfil || "FUNCIONARIO" 
-        }
-    });
-
-    // 4. Retorna os dados do utilizador (incluindo o perfil) sem expor a senha
-    return {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-        perfil: user.perfil
-    };
-};
+// =======================================
 // LOGIN
+// =======================================
+
 exports.login = async ({ email, senha }) => {
+
+    // Procurar utilizador pelo email
     const user = await prisma.usuario.findUnique({
         where: { email }
     });
 
     if (!user) {
-        throw new Error("Utilizador não encontrado");
+        throw new Error(MSG.AUTH.USER_NOT_FOUND);
     }
 
+    // Verificar a palavra-passe
     const senhaValida = await bcrypt.compare(senha, user.senha);
 
     if (!senhaValida) {
-        throw new Error("Senha inválida");
+        throw new Error(MSG.AUTH.INVALID_PASSWORD);
     }
 
-    // 🎯 INCLUÍMOS O PERFIL NO TOKEN JWT
+    // Gerar o token JWT
     const token = jwt.sign(
         {
             id: user.id,
-            email: user.email,
             nome: user.nome,
-            perfil: user.perfil 
+            email: user.email,
+            perfil: user.perfil
         },
         process.env.JWT_SECRET,
-        { expiresIn: "1d" }
+        {
+            expiresIn: "1d"
+        }
     );
 
+    // Resposta
     return {
         token,
         user: {
             id: user.id,
             nome: user.nome,
             email: user.email,
-            perfil: user.perfil 
+            numero: user.numero,
+            cargo: user.cargo,
+            perfil: user.perfil,
+            ativo: user.ativo
         }
     };
 };
 
-// GET USER BY ID (ME)
+// =======================================
+// UTILIZADOR AUTENTICADO
+// =======================================
+
 exports.getUserById = async (id) => {
+
     return await prisma.usuario.findUnique({
         where: { id },
         select: {
             id: true,
             nome: true,
             email: true,
+            numero: true,
+            cargo: true,
             perfil: true,
+            ativo: true,
             dataCriacao: true
         }
     });
+
 };
 
+exports.alterarSenha = async (userId, { senhaAtual, novaSenha }) => {
 
-exports.deleteUserById = async (id) => {
-    try {
-        return await prisma.usuario.delete({
-            where: { 
-                id: Number(id) 
-            }
-        });
-    } catch (error) {
-        if (error.code === 'P2025') {
-            throw new Error("Utilizador não encontrado");
-        }
-        throw error;
+    const user = await prisma.usuario.findUnique({
+        where: { id: userId }
+    });
+
+    if (!user) {
+        throw new Error(MSG.USER.NOT_FOUND);
     }
+
+    const senhaValida = await bcrypt.compare(senhaAtual, user.senha);
+
+    if (!senhaValida) {
+        throw new Error(MSG.AUTH.INVALID_PASSWORD);
+    }
+
+    const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
+
+    await prisma.usuario.update({
+        where: { id: userId },
+        data: { senha: novaSenhaHash }
+    });
+
+    return { mensagem: "Palavra-passe alterada com sucesso." };
 };

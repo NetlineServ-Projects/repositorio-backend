@@ -1,78 +1,48 @@
 const authService = require("../services/authService");
+const HTTP = require("../utils/httpsStatus");
+const MSG = require("../utils/messages");
+const response = require("../utils/response");
 
-// REGISTER
-exports.register = async (req, res) => {
-    try {
-        const user = await authService.register(req.body);
-
-        return res.status(201).json({
-            mensagem: "Utilizador criado com sucesso",
-            user
-        });
-    } catch (error) {
-        return res.status(400).json({
-            mensagem: error.message
-        });
-    }
-};
-
+// =======================================
 // LOGIN
-exports.login = async (req, res) => {
+// =======================================
+
+exports.login = async (req, res, next) => {
     try {
         const result = await authService.login(req.body);
-
-        return res.json({
-            mensagem: "Login efetuado com sucesso",
-            ...result
-        });
+        return response.success(res, MSG.AUTH.LOGIN_SUCCESS, result, HTTP.OK);
     } catch (error) {
-        return res.status(400).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-// ME
-exports.me = async (req, res) => {
+// =======================================
+// UTILIZADOR AUTENTICADO
+// =======================================
+
+exports.me = async (req, res, next) => {
     try {
-        // req.user vem injetado do authMiddleware
         const user = await authService.getUserById(req.user.id);
 
         if (!user) {
-            return res.status(404).json({ mensagem: "Utilizador não encontrado" });
+            return response.error(res, MSG.AUTH.USER_NOT_FOUND, HTTP.NOT_FOUND);
         }
 
-        return res.json(user);
+        return response.success(res, null, user, HTTP.OK);
     } catch (error) {
-        return res.status(500).json({
-            mensagem: error.message
-        });
+        next(error);
     }
 };
 
-// DELETE CURRENT 
-exports.deleteCurrent = async (req, res) => {
+// =======================================
+// ALTERAR SENHA (opcional, feito pelo próprio utilizador)
+// =======================================
+
+exports.alterarSenha = async (req, res, next) => {
     try {
-        const userId = req.user?.id;
-
-        if (!userId) {
-            return res.status(401).json({ mensagem: "Utilizador não autenticado" });
-        }
-
-        // Delega a exclusão para o Service
-        await authService.deleteUserById(userId);
-
-        return res.status(200).json({
-            mensagem: "Os seus dados foram permanentemente eliminados do sistema."
-        });
+        const resultado = await authService.alterarSenha(req.user.id, req.body);
+        return response.success(res, resultado.mensagem, null, HTTP.OK);
     } catch (error) {
-        // Se o service lançar um erro dizendo que não encontrou o utilizador
-        if (error.message === "Utilizador não encontrado") {
-            return res.status(404).json({ mensagem: error.message });
-        }
-
-        return res.status(500).json({
-            mensagem: "Erro interno ao tentar remover a conta"
-        });
+        next(error);
     }
 };
