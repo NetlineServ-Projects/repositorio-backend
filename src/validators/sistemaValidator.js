@@ -1,5 +1,6 @@
 const { z } = require("zod");
 
+
 const createSistemaSchema = z.object({
     nome: z.string().trim().min(2, "O nome do sistema é obrigatório."),
     desenvolvedores: z.array(z.string()).min(1, "Informe pelo menos um desenvolvedor."),
@@ -8,8 +9,15 @@ const createSistemaSchema = z.object({
     descricaoLonga: z.string().trim().optional(),
     dataInicio: z.coerce.date(),
     dataEntrega: z.coerce.date().optional(),
-    status: z.enum(["EM_PRODUCAO", "EM_DESENVOLVIMENTO", "MANUTENCAO"]).optional(),
-    tecnologias: z.array(z.string()).optional()
+    status: z.enum(["Em Produção", "Em Desenvolvimento", "Manutenção"]).optional(),
+    tecnologiasFrontend: z.array(z.string()).optional(),
+    tecnologiasBackend: z.array(z.string()).optional(),
+    tecnologiasInfraestrutura: z.array(z.string()).optional(),
+    repositorioUrl: z.url("URL do repositório inválida.").optional(),
+    urlProducao: z.url("URL de produção inválida.").optional(),
+    responsavelTecnico: z.string().trim().optional(),
+    versaoAtual: z.string().trim().optional(),
+    ativo: z.boolean().optional()
 });
 
 module.exports = {

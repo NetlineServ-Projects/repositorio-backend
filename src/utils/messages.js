@@ -46,7 +46,9 @@ const MESSAGES = {
 
     VALIDATION: {
         REQUIRED_FIELDS: "Preencha todos os campos obrigatórios.",
-        INVALID_DATA: "Os dados fornecidos são inválidos."
+        INVALID_DATA: "Os dados fornecidos são inválidos.",
+        INVALID_ID: "ID inválido.",
+        CATEGORIA_REQUIRED: "A categoria é obrigatória."
     },
 
     SERVER: {

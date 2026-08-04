@@ -2,11 +2,10 @@ const prisma = require("../config/prisma");
 const bcrypt = require("bcrypt");
 
 const MSG = require("../utils/messages");
+const HTTP_STATUS = require("../utils/httpsStatus");
 const ROLES = require("../constants/roles");
-
-// =======================================
-// CRIAR UTILIZADOR
-// =======================================
+const AppError = require("../utils/AppError");
+const { formatarUsuario } = require("../utils/fileHelper");
 
 exports.criarUsuario = async ({ nome, email, senha, numero, cargo, perfil }) => {
 
@@ -15,7 +14,7 @@ exports.criarUsuario = async ({ nome, email, senha, numero, cargo, perfil }) => 
     });
 
     if (usuarioExistente) {
-       throw new Error(MSG.USER.EMAIL_ALREADY_EXISTS);
+        throw new AppError(MSG.USER.EMAIL_ALREADY_EXISTS, HTTP_STATUS.CONFLICT);
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
@@ -31,14 +30,5 @@ exports.criarUsuario = async ({ nome, email, senha, numero, cargo, perfil }) => 
         }
     });
 
-    return {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        numero: usuario.numero,
-        cargo: usuario.cargo,
-        perfil: usuario.perfil,
-        ativo: usuario.ativo,
-        dataCriacao: usuario.dataCriacao
-    };
+    return formatarUsuario(usuario);
 };

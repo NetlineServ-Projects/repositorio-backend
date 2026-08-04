@@ -14,6 +14,35 @@ function gerarNomeArquivo(originalname, ext) {
     return `${ano}${mes}${dia}-${hora}${minuto}${segundo}-${sufixo}${ext}`;
 }
 
+// Converte para número e valida — lança erro se não for um ID válido
+function parseId(valor, mensagemErro) {
+    const idNum = Number(valor);
+    if (isNaN(idNum)) {
+        throw new Error(mensagemErro);
+    }
+    return idNum;
+}
+
+// Converte o campo "tamanho" (BigInt) para String, para não quebrar o JSON.stringify
+function formatarDocumento(documento) {
+    return {
+        ...documento,
+        tamanho: documento.tamanho ? documento.tamanho.toString() : "0",
+    };
+}
+
+// Remove a senha antes de devolver o usuário ao cliente
+function formatarUsuario(usuario) {
+    const { senha, ...usuarioSemSenha } = usuario;
+    return usuarioSemSenha;
+}
+
+
+
+
 module.exports = {
-    gerarNomeArquivo
+    gerarNomeArquivo,
+     parseId,
+    formatarDocumento,
+    formatarUsuario
 };

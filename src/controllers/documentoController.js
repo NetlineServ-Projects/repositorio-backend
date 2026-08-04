@@ -6,8 +6,8 @@ const response = require("../utils/response");
 exports.criarDocumento = async (req, res, next) => {
     try {
         const usuario = req.user;
-
         const ficheiro = req.file;
+
         if (!ficheiro) {
             return response.error(res, "Nenhum ficheiro foi enviado.", HTTP.BAD_REQUEST);
         }
@@ -23,7 +23,6 @@ exports.criarDocumento = async (req, res, next) => {
         };
 
         const documentoCriado = await documentoService.criarDocumento(dadosDocumento, usuario);
-
         return response.success(res, MSG.DOCUMENTO.CREATED, documentoCriado, HTTP.CREATED);
     } catch (error) {
         next(error);
@@ -32,7 +31,7 @@ exports.criarDocumento = async (req, res, next) => {
 
 exports.listarDocumentos = async (req, res, next) => {
     try {
-        const documentos = await documentoService.listarDocumentos();
+        const documentos = await documentoService.listarDocumentos(req.user.perfil);
         return response.success(res, null, documentos, HTTP.OK);
     } catch (error) {
         next(error);
@@ -42,28 +41,8 @@ exports.listarDocumentos = async (req, res, next) => {
 exports.buscarDocumentoPorId = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const documento = await documentoService.buscarDocumentoPorId(id);
+        const documento = await documentoService.buscarDocumentoPorId(id, req.user.perfil);
         return response.success(res, null, documento, HTTP.OK);
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.aprovarDocumento = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const documento = await documentoService.aprovarDocumento(id);
-        return response.success(res, MSG.DOCUMENTO.APPROVED, documento, HTTP.OK);
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.rejeitarDocumento = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        const documento = await documentoService.rejeitarDocumento(id, req.body);
-        return response.success(res, MSG.DOCUMENTO.REJECTED, documento, HTTP.OK);
     } catch (error) {
         next(error);
     }
@@ -78,8 +57,7 @@ exports.atualizarDocumento = async (req, res, next) => {
             return response.error(res, "Nenhum dado fornecido para atualização.", HTTP.BAD_REQUEST);
         }
 
-        const documentoAtualizado = await documentoService.atualizarDocumento(id, dadosAtualizacao);
-
+        const documentoAtualizado = await documentoService.atualizarDocumento(id, dadosAtualizacao, req.user.perfil);
         return response.success(res, MSG.DOCUMENTO.UPDATED, documentoAtualizado, HTTP.OK);
     } catch (error) {
         next(error);

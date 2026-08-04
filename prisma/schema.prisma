@@ -49,26 +49,36 @@ model Categoria {
   id          Int      @id @default(autoincrement())
   nome        String   @unique
   descricao   String?
+  sensivel    Boolean  @default(false)
 
   documentos  Documento[]
 }
 
 model Sistema {
-  id               Int           @id @default(autoincrement())
-  nome             String        @db.VarChar(255)
-  desenvolvedores  Json          
-  empresasClientes Json          
-  descricaoCurta   String?       @db.VarChar(255) // Resumo para os cartões
-  descricaoLonga   String?       @db.Text         // Objetivo real do sistema
-  dataInicio       DateTime                       // Início do desenvolvimento
-  dataEntrega      DateTime?                      // Data da entrega aos clientes
-  status           StatusSistema @default(EM_DESENVOLVIMENTO)
-  tecnologias      Json?                          // Ex: ["React", "TypeScript", "MySQL"]
-  documentos       Documento[]   // Ficheiros/manuais associados ao sistema
-  dataCriacao      DateTime      @default(now())
+  id                     Int           @id @default(autoincrement())
+  nome                   String        @db.VarChar(255)
+  desenvolvedores        Json
+  empresasClientes       Json
+  descricaoCurta         String?       @db.VarChar(255)
+  descricaoLonga         String?       @db.Text
+  dataInicio             DateTime
+  dataEntrega            DateTime?
+  status                 StatusSistema @default(EM_DESENVOLVIMENTO)
+  tecnologiasFrontend    Json?
+  tecnologiasBackend     Json?
+  tecnologiasInfraestrutura Json?
+  repositorioUrl         String?       @db.VarChar(255)
+  urlProducao            String?       @db.VarChar(255)
+  responsavelTecnico     String?       @db.VarChar(255)
+  versaoAtual            String?       @db.VarChar(50)
+  ativo                  Boolean       @default(true)
+  documentos             Documento[]
+  dataCriacao            DateTime      @default(now())
 
   @@map("sistemas")
 }
+
+
 
 enum EstadoDocumento {
   PENDENTE

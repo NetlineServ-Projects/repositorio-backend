@@ -1,20 +1,23 @@
 const prisma = require("../config/prisma");
+const MSG = require("../utils/messages");
+const HTTP_STATUS = require("../utils/httpsStatus");
+const AppError = require("../utils/AppError");
+const { parseId, formatarDocumento } = require("../utils/fileHelper");
+
+const includePadrao = {
+  categoria: true,
+  usuario: {
+    select: { id: true, nome: true, email: true },
+  },
+};
 
 exports.criarDocumento = async (dados, usuario) => {
   if (!dados.categoriaId) {
-    throw new Error("A categoria é obrigatória.");
+    throw new AppError(MSG.VALIDATION.CATEGORIA_REQUIRED, HTTP_STATUS.BAD_REQUEST);
   }
 
-  const categoriaIdNum = Number(dados.categoriaId);
-  if (isNaN(categoriaIdNum)) {
-    throw new Error("ID de categoria inválido.");
-  }
-
-  // Mapeia o ID do utilizador (suporta usuario.id ou usuario.usuarioId)
-  const usuarioIdNum = Number(usuario.id || usuario.usuarioId);
-  if (isNaN(usuarioIdNum)) {
-    throw new Error("ID de utilizador inválido.");
-  }
+  const categoriaIdNum = parseId(dados.categoriaId, MSG.VALIDATION.INVALID_ID);
+  const usuarioIdNum = parseId(usuario.id || usuario.usuarioId, MSG.VALIDATION.INVALID_ID);
 
   const novoDocumento = await prisma.documento.create({
     data: {
@@ -26,150 +29,86 @@ exports.criarDocumento = async (dados, usuario) => {
       tamanho: BigInt(dados.tamanho || 0),
       categoriaId: categoriaIdNum,
       usuarioId: usuarioIdNum,
-      estado: "PENDENTE", // Estado inicial padrão
+      estado: "PENDENTE",
     },
-    include: {
-      categoria: {
-        select:{nome:true}
-      }, 
-      usuario: {
-        select: { id: true, nome: true, email: true },
-      },
-    },
+    include: includePadrao,
   });
 
-  return {
-    ...novoDocumento,
-    tamanho: novoDocumento.tamanho.toString(),
-  };
+  return formatarDocumento(novoDocumento);
 };
 
-exports.listarDocumentos = async () => {
+exports.listarDocumentos = async (perfil) => {
+  const where = perfil === "ADMIN" ? {} : { categoria: { sensivel: false } };
+
   const documentos = await prisma.documento.findMany({
-    include: {
-      categoria: true,
-      usuario: {
-        select: { id: true, nome: true, email: true },
-      },
-    },
+    where,
+    include: includePadrao,
     orderBy: { dataSubmissao: "desc" },
   });
 
-  // Converte BigInt (tamanho) para String para não falhar no JSON.stringify
-  return documentos.map((doc) => ({
-    ...doc,
-    tamanho: doc.tamanho ? doc.tamanho.toString() : "0",
-  }));
+  return documentos.map(formatarDocumento);
 };
 
-exports.buscarDocumentoPorId = async (id) => {
-  const idNum = Number(id);
-  if (isNaN(idNum)) throw new Error("ID de documento inválido.");
+exports.buscarDocumentoPorId = async (id, perfil) => {
+  const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
   const documento = await prisma.documento.findUnique({
     where: { id: idNum },
-    include: {
-      categoria: true,
-      usuario: {
-        select: { id: true, nome: true, email: true },
-      },
-    },
+    include: includePadrao,
   });
 
-  if (!documento) throw new Error("Documento não encontrado.");
+  if (!documento) throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-  return {
-    ...documento,
-    tamanho: documento.tamanho ? documento.tamanho.toString() : "0",
-  };
+  if (documento.categoria.sensivel && perfil !== "ADMIN") {
+    throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+  }
+
+  return formatarDocumento(documento);
 };
 
-exports.aprovarDocumento = async (id) => {
-  const idNum = Number(id);
-  if (isNaN(idNum)) throw new Error("ID inválido.");
+// Atualização parcial: título, descrição, categoria, e/ou estado (aprovar/rejeitar)
+exports.atualizarDocumento = async (id, dados, perfil) => {
+  const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
-  const documentoAtualizado = await prisma.documento.update({
-    where: { id: idNum },
-    data: { estado: "APROVADO" },
-    include: { categoria: true, usuario: true },
-  });
+  const documentoExiste = await prisma.documento.findUnique({ where: { id: idNum } });
+  if (!documentoExiste) throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-  return {
-    ...documentoAtualizado,
-    tamanho: documentoAtualizado.tamanho.toString(),
-  };
-};
-
-exports.rejeitarDocumento = async (id, body) => {
-  const idNum = Number(id);
-  if (isNaN(idNum)) throw new Error("ID inválido.");
-
-  const documentoAtualizado = await prisma.documento.update({
-    where: { id: idNum },
-    data: {
-      estado: "REJEITADO",
-      motivoRejeicao: body?.motivo || body?.motivoRejeicao || "Não especificado",
-    },
-    include: { categoria: true, usuario: true },
-  });
-
-  return {
-    ...documentoAtualizado,
-    tamanho: documentoAtualizado.tamanho.toString(),
-  };
-};
-
-exports.atualizarDocumento = async (id, dados) => {
-  const idNum = Number(id);
-  if (isNaN(idNum)) throw new Error("ID inválido.");
-
-  const documentoExiste = await prisma.documento.findUnique({
-    where: { id: idNum },
-  });
-
-  if (!documentoExiste) throw new Error("Documento não encontrado.");
-
-  // Prepara o objeto de atualização dinamicamente
   const dadosParaAtualizar = {};
 
-  // Aceita tanto 'estado' quanto 'status' enviados pelo frontend
-  const novoEstado = dados.estado || dados.status;
+  // Mudar o estado (aprovar/rejeitar) é exclusivo de ADMIN
+  const novoEstado = dados.estado;
   if (novoEstado) {
+    if (perfil !== "ADMIN") {
+      throw new AppError(MSG.AUTH.FORBIDDEN, HTTP_STATUS.FORBIDDEN);
+    }
+
     dadosParaAtualizar.estado = novoEstado.toUpperCase();
+
+    if (dadosParaAtualizar.estado === "REJEITADO") {
+      dadosParaAtualizar.motivoRejeicao = dados.motivoRejeicao || "Não especificado";
+    }
   }
 
   if (dados.titulo) dadosParaAtualizar.titulo = dados.titulo;
   if (dados.descricao !== undefined) dadosParaAtualizar.descricao = dados.descricao;
-  if (dados.categoriaId) dadosParaAtualizar.categoriaId = Number(dados.categoriaId);
+  if (dados.categoriaId) dadosParaAtualizar.categoriaId = parseId(dados.categoriaId, MSG.VALIDATION.INVALID_ID);
 
   const documentoAtualizado = await prisma.documento.update({
     where: { id: idNum },
     data: dadosParaAtualizar,
-    include: {
-      categoria: true,
-      usuario: { select: { id: true, nome: true, email: true } },
-    },
+    include: includePadrao,
   });
 
-  return {
-    ...documentoAtualizado,
-    tamanho: documentoAtualizado.tamanho.toString(),
-  };
+  return formatarDocumento(documentoAtualizado);
 };
 
 exports.eliminarDocumento = async (id) => {
-  const idNum = Number(id);
-  if (isNaN(idNum)) throw new Error("ID inválido.");
+  const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
-  const documentoExiste = await prisma.documento.findUnique({
-    where: { id: idNum },
-  });
+  const documentoExiste = await prisma.documento.findUnique({ where: { id: idNum } });
+  if (!documentoExiste) throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-  if (!documentoExiste) throw new Error("Documento não encontrado.");
-
-  await prisma.documento.delete({
-    where: { id: idNum },
-  });
+  await prisma.documento.delete({ where: { id: idNum } });
 
   return true;
 };

@@ -8,9 +8,9 @@ const authorize = require("../middlewares/roleMiddleware");
 const validate = require("../validators/validate");
 
 const { createDocumentoSchema } = require("../validators/documentoValidator");
-const ROLES = require("../constants/roles");
+const ROLES = require("../constants/roles"); 
 
-// Criar documento (qualquer utilizador autenticado)
+
 router.post(
   "/",
   authMiddleware,
@@ -19,32 +19,12 @@ router.post(
   documentoController.criarDocumento
 );
 
-// Listar documentos (qualquer utilizador autenticado)
 router.get("/", authMiddleware, documentoController.listarDocumentos);
 
-// Buscar documento por ID (qualquer utilizador autenticado)
 router.get("/:id", authMiddleware, documentoController.buscarDocumentoPorId);
 
-// Aprovar documento — só ADMIN
-router.put(
-  "/:id/aprovar",
-  authMiddleware,
-  authorize(ROLES.ADMIN),
-  documentoController.aprovarDocumento
-);
+router.patch("/:id", authMiddleware, documentoController.atualizarDocumento);
 
-// Rejeitar documento — só ADMIN
-router.put(
-  "/:id/rejeitar",
-  authMiddleware,
-  authorize(ROLES.ADMIN),
-  documentoController.rejeitarDocumento
-);
-
-// Atualizar documento (editar título, mudar estado, etc.)
-router.put("/:id", authMiddleware, documentoController.atualizarDocumento);
-
-// Apagar documento definitivamente da base de dados
-router.delete("/:id", authMiddleware, documentoController.eliminarDocumento);
+router.delete("/:id", authMiddleware, authorize(ROLES.ADMIN), documentoController.eliminarDocumento);
 
 module.exports = router;

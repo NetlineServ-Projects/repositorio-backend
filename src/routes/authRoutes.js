@@ -14,7 +14,7 @@ router.post("/login", validate(loginSchema), authController.login);
 router.get("/me", authMiddleware, authController.me);
 
 // Alterar senha (opcional, feito pelo próprio utilizador autenticado)
-router.put("/senha", authMiddleware, validate(alterarSenhaSchema), authController.alterarSenha);
+router.patch("/senha", authMiddleware, validate(alterarSenhaSchema), authController.alterarSenha);
 
 
 module.exports = router;
