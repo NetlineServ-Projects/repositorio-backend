@@ -11,7 +11,7 @@ const createSistemaSchema = z.object({
     dataEntrega: z.coerce.date().optional(),
     status: z.enum(["Em Produção", "Em Desenvolvimento", "Manutenção"]).optional(),
     tecnologiasFrontend: z.array(z.string()).optional(),
-    tecnologiasBackend: z.array(z.string()).optional(),
+    tecnologiasBackend: z.array(z.string()).optional(), 
     tecnologiasInfraestrutura: z.array(z.string()).optional(),
     repositorioUrl: z.url("URL do repositório inválida.").optional(),
     urlProducao: z.url("URL de produção inválida.").optional(),
@@ -19,6 +19,10 @@ const createSistemaSchema = z.object({
     versaoAtual: z.string().trim().optional(),
     ativo: z.boolean().optional()
 });
+
+// Deriva o schema do PATCH tornando todos os campos opcionais
+const updateSistemaSchema = createSistemaSchema.partial();
+
 
 module.exports = {
     createSistemaSchema

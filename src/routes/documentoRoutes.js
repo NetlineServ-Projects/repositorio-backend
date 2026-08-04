@@ -8,6 +8,7 @@ const authorize = require("../middlewares/roleMiddleware");
 const validate = require("../validators/validate");
 
 const { createDocumentoSchema } = require("../validators/documentoValidator");
+const{updateDocumentoSchema} = require("../validators/documentoValidator");
 const ROLES = require("../constants/roles"); 
 
 
@@ -23,7 +24,7 @@ router.get("/", authMiddleware, documentoController.listarDocumentos);
 
 router.get("/:id", authMiddleware, documentoController.buscarDocumentoPorId);
 
-router.patch("/:id", authMiddleware, documentoController.atualizarDocumento);
+router.patch("/:id", authMiddleware,validate(updateDocumentoSchema), documentoController.atualizarDocumento);
 
 router.delete("/:id", authMiddleware, authorize(ROLES.ADMIN), documentoController.eliminarDocumento);
 

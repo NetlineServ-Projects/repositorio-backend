@@ -7,6 +7,9 @@ const createDocumentoSchema = z.object({
     sistemaId: z.coerce.number().int().positive("Sistema inválido.").optional()
 });
 
+// Deriva o schema do PATCH tornando todos os campos opcionais
+const updateDocumentoSchema = createDocumentoSchema.partial();
+
 module.exports = {
     createDocumentoSchema
 };

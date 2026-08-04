@@ -10,6 +10,9 @@ const createUserSchema = z.object({
     perfil: z.enum([ROLES.ADMIN, ROLES.FUNCIONARIO])
 });
 
+// Deriva o schema do PATCH tornando todos os campos opcionais
+const updateUserSchema = createUserSchema.partial();
+
 module.exports = {
     createUserSchema
 };
