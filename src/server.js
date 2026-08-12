@@ -3,12 +3,10 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
+
+
 // Importa as rotas
-const authRoutes = require("./routes/authRoutes");
-const categoriaRoutes = require("./routes/categoriaRoutes");
-const documentoRoutes = require("./routes/documentoRoutes");
-const sistemasRoutes = require("./routes/sistemasRoutes");
-const usuarioRoutes = require("./routes/usuarioRoutes");
+const routesV1 = require("./routes/v1")
 
 // Importa o middleware de erro
 const errorMiddleware = require("./middlewares/errorMiddleware");
@@ -18,6 +16,7 @@ const app = express();
 // Configurações Globais
 app.use(cors());
 app.use(express.json());
+
 
 // Tornar a pasta de uploads pública estaticamente
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
@@ -29,12 +28,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Vincular as rotas ao Express com o prefixo /api
-app.use("/api/auth", authRoutes);
-app.use("/api/categorias", categoriaRoutes);
-app.use("/api/documentos", documentoRoutes);
-app.use("/api/sistemas", sistemasRoutes);
-app.use("/api/usuarios", usuarioRoutes);
+app.use("/api/v1", routesV1)
 
 // Middleware de tratamento de erros — SEMPRE por último, depois de todas as rotas
 app.use(errorMiddleware);

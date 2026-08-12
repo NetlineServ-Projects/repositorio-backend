@@ -1,3 +1,4 @@
+const { sistema } = require("../config/prisma");
 const documentoService = require("../services/documentoService");
 const HTTP = require("../utils/httpsStatus");
 const MSG = require("../utils/messages");
@@ -19,7 +20,8 @@ exports.criarDocumento = async (req, res, next) => {
             caminho: ficheiro.path.replace(/\\/g, "/"),
             tipoArquivo: ficheiro.mimetype,
             tamanho: ficheiro.size,
-            categoriaId: req.body.categoriaId
+            categoriaId: req.body.categoriaId,
+            sistemaId: req.body.sistemaId,
         };
 
         const documentoCriado = await documentoService.criarDocumento(dadosDocumento, usuario);
@@ -30,12 +32,13 @@ exports.criarDocumento = async (req, res, next) => {
 };
 
 exports.listarDocumentos = async (req, res, next) => {
-    try {
-        const documentos = await documentoService.listarDocumentos(req.user.perfil);
-        return response.success(res, null, documentos, HTTP.OK);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const apenasLixeira = req.query.lixeira === "true";
+    const documentos = await documentoService.listarDocumentos(req.user.perfil, apenasLixeira);
+    return response.success(res, null, documentos, HTTP.OK);
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.buscarDocumentoPorId = async (req, res, next) => {
@@ -65,11 +68,12 @@ exports.atualizarDocumento = async (req, res, next) => {
 };
 
 exports.eliminarDocumento = async (req, res, next) => {
-    try {
-        const { id } = req.params;
-        await documentoService.eliminarDocumento(id);
-        return response.success(res, MSG.DOCUMENTO.DELETED, null, HTTP.OK);
-    } catch (error) {
-        next(error);
-    }
+  try {
+    const { id } = req.params;
+    const definitivo = req.query.definitivo === "true";
+    await documentoService.eliminarDocumento(id, definitivo);
+    return response.success(res, MSG.DOCUMENTO.DELETED, null, HTTP.OK);
+  } catch (error) {
+    next(error);
+  }
 };

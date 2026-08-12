@@ -1,11 +1,11 @@
 const express = require("express");
 const router = express.Router();
 
-const authController = require("../controllers/authController");
-const authMiddleware = require("../middlewares/authMiddleware");
-const validate = require("../validators/validate");
+const authController = require("../../controllers/authController");
+const authMiddleware = require("../../middlewares/authMiddleware");
+const validate = require("../../validators/validate");
 
-const { loginSchema, alterarSenhaSchema } = require("../validators/authValidator");
+const { loginSchema, alterarSenhaSchema } = require("../../validators/authValidator");
 
 // Login (rota pública)
 router.post("/login", validate(loginSchema), authController.login);

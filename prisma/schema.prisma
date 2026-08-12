@@ -32,6 +32,7 @@ model Documento{
   estado          EstadoDocumento @default(PENDENTE)
   dataSubmissao   DateTime @default(now())
   motivoRejeicao  String? 
+  apagadoEm       DateTime?
 
   usuarioId    Int
   usuario      Usuario @relation(fields: [usuarioId], references: [id])

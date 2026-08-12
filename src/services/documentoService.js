@@ -18,6 +18,11 @@ exports.criarDocumento = async (dados, usuario) => {
 
   const categoriaIdNum = parseId(dados.categoriaId, MSG.VALIDATION.INVALID_ID);
   const usuarioIdNum = parseId(usuario.id || usuario.usuarioId, MSG.VALIDATION.INVALID_ID);
+  const sistemaIdNum = dados.sistemaId ? parseId(dados.sistemaId, MSG.VALIDATION.INVALID_ID) : undefined;
+
+
+  // ADMIN publica imediatamente; FUNCIONARIO fica a aguardar aprovação
+  const estadoInicial = usuario.perfil === "ADMIN" ? "APROVADO" : "PENDENTE";
 
   const novoDocumento = await prisma.documento.create({
     data: {
@@ -29,7 +34,8 @@ exports.criarDocumento = async (dados, usuario) => {
       tamanho: BigInt(dados.tamanho || 0),
       categoriaId: categoriaIdNum,
       usuarioId: usuarioIdNum,
-      estado: "PENDENTE",
+      estado: estadoInicial,
+      ...(sistemaIdNum&&{ sistemaId : sistemaIdNum}),
     },
     include: includePadrao,
   });
@@ -37,13 +43,16 @@ exports.criarDocumento = async (dados, usuario) => {
   return formatarDocumento(novoDocumento);
 };
 
-exports.listarDocumentos = async (perfil) => {
+exports.listarDocumentos = async (perfil, apenasLixeira=false) => {
   const where = perfil === "ADMIN" ? {} : { categoria: { sensivel: false } };
+  where.apagadoEm = apenasLixeira ? { not: null } : null;
+
+
 
   const documentos = await prisma.documento.findMany({
     where,
     include: includePadrao,
-    orderBy: { dataSubmissao: "desc" },
+    orderBy: apenasLixeira?{apagadoEm:"desc"} : { dataSubmissao: "desc" },
   });
 
   return documentos.map(formatarDocumento);
@@ -89,6 +98,14 @@ exports.atualizarDocumento = async (id, dados, perfil) => {
     }
   }
 
+ if (dados.apagadoEm === null) {
+    if (perfil !== "ADMIN") {
+      throw new AppError(MSG.AUTH.FORBIDDEN, HTTP_STATUS.FORBIDDEN);
+    }
+    dadosParaAtualizar.apagadoEm = null;
+  }
+
+
   if (dados.titulo) dadosParaAtualizar.titulo = dados.titulo;
   if (dados.descricao !== undefined) dadosParaAtualizar.descricao = dados.descricao;
   if (dados.categoriaId) dadosParaAtualizar.categoriaId = parseId(dados.categoriaId, MSG.VALIDATION.INVALID_ID);
@@ -102,13 +119,24 @@ exports.atualizarDocumento = async (id, dados, perfil) => {
   return formatarDocumento(documentoAtualizado);
 };
 
-exports.eliminarDocumento = async (id) => {
+exports.eliminarDocumento = async (id, definitivo = false) => {
   const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
   const documentoExiste = await prisma.documento.findUnique({ where: { id: idNum } });
   if (!documentoExiste) throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-  await prisma.documento.delete({ where: { id: idNum } });
+  if (definitivo) {
+    if (!documentoExiste.apagadoEm) {
+      throw new AppError("O documento precisa de estar na lixeira antes de ser eliminado definitivamente.", HTTP_STATUS.BAD_REQUEST);
+    }
+    await prisma.documento.delete({ where: { id: idNum } });
+    return true;
+  }
+
+  await prisma.documento.update({
+    where: { id: idNum },
+    data: { apagadoEm: new Date() },
+  });
 
   return true;
 };
