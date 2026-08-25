@@ -3,6 +3,7 @@ const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { parseId } = require("../utils/fileHelper");
+const atividadeService = require("./atividadeService");
 
 const mapStatusToEnum = (status) => {
   const statusMap = {
@@ -50,33 +51,63 @@ class SistemaService {
     }));
   }
 
-  async criar(dados) {
-    return await prisma.sistema.create({
+  async criar(dados, nomeUsuario) {
+    const novoSistema = await prisma.sistema.create({
       data: montarDadosSistema(dados)
     });
+
+    if (nomeUsuario) {
+      await atividadeService.registrar({
+        usuario: nomeUsuario,
+        acao: "criou o sistema",
+        alvo: novoSistema.nome,
+      });
+    }
+
+    return novoSistema;
   }
 
-  async atualizar(id, dados) {
+  async atualizar(id, dados, nomeUsuario) {
     const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
     const sistemaExiste = await prisma.sistema.findUnique({ where: { id: idNum } });
     if (!sistemaExiste) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-    return await prisma.sistema.update({
+    const sistemaAtualizado = await prisma.sistema.update({
       where: { id: idNum },
       data: montarDadosSistema(dados)
     });
+
+    if (nomeUsuario) {
+      await atividadeService.registrar({
+        usuario: nomeUsuario,
+        acao: "atualizou o sistema",
+        alvo: sistemaAtualizado.nome,
+      });
+    }
+
+    return sistemaAtualizado;
   }
 
-  async apagar(id) {
+  async apagar(id, nomeUsuario) {
     const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
     const sistemaExiste = await prisma.sistema.findUnique({ where: { id: idNum } });
     if (!sistemaExiste) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-    return await prisma.sistema.delete({
+    const sistemaApagado = await prisma.sistema.delete({
       where: { id: idNum }
     });
+
+    if (nomeUsuario) {
+      await atividadeService.registrar({
+        usuario: nomeUsuario,
+        acao: "eliminou o sistema",
+        alvo: sistemaApagado.nome,
+      });
+    }
+
+    return sistemaApagado;
   }
 
   async obterPorId(id) {

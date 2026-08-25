@@ -18,6 +18,12 @@ model Usuario {
   ativo       Boolean      @default(true)
   dataCriacao DateTime     @default(now())
 
+
+  temaEscuro          Boolean @default(false)
+  notificacoesEmail   Boolean @default(true)
+  idioma              String  @default("pt")
+
+
   documentos   Documento[]
 }
 
@@ -79,6 +85,13 @@ model Sistema {
   @@map("sistemas")
 }
 
+model Atividade {
+  id       String   @id @default(uuid())
+  usuario  String
+  acao     String
+  alvo     String?
+  criadoEm DateTime @default(now())
+}
 
 
 enum EstadoDocumento {

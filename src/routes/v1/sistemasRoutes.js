@@ -16,7 +16,6 @@ router.get("/", authMiddleware, sistemaController.listar);
 // Obter detalhes de um sistema (qualquer utilizador autenticado)
 router.get("/:id", authMiddleware, sistemaController.obterPorId);
 
-
 router.post(
   "/",
   authMiddleware,
@@ -24,14 +23,12 @@ router.post(
   sistemaController.criar
 );
 
-
 router.patch(
   "/:id",
   authMiddleware,
   validate(updateSistemaSchema),
   sistemaController.atualizar
 );
-
 
 router.delete(
   "/:id",

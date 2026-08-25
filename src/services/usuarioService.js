@@ -117,3 +117,17 @@ exports.eliminarUsuario = async (id) => {
 
     return true;
 };
+exports.atualizarPreferencias = async (userId, { temaEscuro, notificacoesEmail, idioma }) => {
+    const dados = {};
+
+    if (typeof temaEscuro === "boolean") dados.temaEscuro = temaEscuro;
+    if (typeof notificacoesEmail === "boolean") dados.notificacoesEmail = notificacoesEmail;
+    if (typeof idioma === "string") dados.idioma = idioma;
+
+    const usuarioAtualizado = await prisma.usuario.update({
+        where: { id: userId },
+        data: dados
+    });
+
+    return formatarUsuario(usuarioAtualizado);
+};

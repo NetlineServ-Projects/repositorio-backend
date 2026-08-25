@@ -56,3 +56,12 @@ exports.eliminarUsuario = async (req, res, next) => {
         next(error);
     }
 };
+exports.atualizarPreferencias = async (req, res, next) => {
+    try {
+        const userId = req.user.id;
+        const preferenciasAtualizadas = await usuarioService.atualizarPreferencias(userId, req.body);
+        return response.success(res, MSG.USER.UPDATED, preferenciasAtualizadas, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};

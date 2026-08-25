@@ -25,5 +25,6 @@ const updateSistemaSchema = createSistemaSchema.partial();
 
 
 module.exports = {
-    createSistemaSchema
+    createSistemaSchema,
+    updateSistemaSchema
 };

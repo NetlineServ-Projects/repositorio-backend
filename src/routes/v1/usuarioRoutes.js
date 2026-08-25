@@ -18,6 +18,9 @@ router.post(
     usuarioController.criarUsuario
 );
 
+// Qualquer utilizador autenticado pode atualizar as PRÓPRIAS preferências
+router.patch("/me/preferencias", authMiddleware, usuarioController.atualizarPreferencias);
+
 router.get("/", authMiddleware,authorize(ROLES.ADMIN), usuarioController.listarUsuarios);
 
 router.get("/:id", authMiddleware,authorize(ROLES.ADMIN), usuarioController.buscarUsuarioPorId);

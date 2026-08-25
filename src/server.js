@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
-
+const languageMiddleware = require("./middlewares/i18n"); 
 
 
 // Importa as rotas
@@ -16,7 +16,7 @@ const app = express();
 // Configurações Globais
 app.use(cors());
 app.use(express.json());
-
+app.use(languageMiddleware);
 
 // Tornar a pasta de uploads pública estaticamente
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
