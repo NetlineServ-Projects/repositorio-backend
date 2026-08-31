@@ -44,10 +44,13 @@ module.exports = {
     },
 
     VALIDATION: {
-        REQUIRED_FIELDS: "Please fill in all required fields.",
-        INVALID_DATA: "The data provided is invalid.",
-        INVALID_ID: "Invalid ID.",
-        CATEGORIA_REQUIRED: "Category is required."
+      REQUIRED_FIELDS: "Please fill in all required fields.",
+      INVALID_DATA: "The data provided is invalid.",
+      INVALID_ID: "Invalid ID.",
+      CATEGORIA_REQUIRED: "Category is required.",
+      FILE_TOO_LARGE: "The file exceeds the maximum allowed size (50MB).",
+      INVALID_DOCUMENT_TYPE: "File type not allowed. Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG.",
+      NO_FILE_UPLOADED: "No file was uploaded."
     },
 
     SERVER: {

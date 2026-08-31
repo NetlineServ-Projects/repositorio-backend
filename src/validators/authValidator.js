@@ -10,7 +10,15 @@ const alterarSenhaSchema = z.object({
     novaSenha: z.string().min(8, "A nova palavra-passe deve ter pelo menos 8 caracteres.")
 });
 
+const atualizarPerfilSchema = z.object({
+    nome: z.string().min(1, "O nome é obrigatório.").optional(),
+    email: z.email("Email inválido.").optional(),
+    cargo: z.string().min(1).optional(),
+    numero: z.string().optional()
+});
+
 module.exports = {
     loginSchema,
-    alterarSenhaSchema
+    alterarSenhaSchema,
+    atualizarPerfilSchema
 };

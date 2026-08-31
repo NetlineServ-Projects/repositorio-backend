@@ -7,12 +7,17 @@ const createUserSchema = z.object({
     senha: z.string().min(8, "A palavra-passe deve ter pelo menos 8 caracteres."),
     numero: z.string().trim().min(9, "Número inválido."),
     cargo: z.string().trim().min(2, "Cargo é obrigatório."),
+    departamento: z.string().trim().min(2, "Departamento é obrigatório."),
     perfil: z.enum([ROLES.ADMIN, ROLES.FUNCIONARIO])
 });
 
-// Deriva o schema do PATCH tornando todos os campos opcionais
-const updateUserSchema = createUserSchema.partial();
+// Deriva o schema do PATCH tornando todos os campos opcionais, e adiciona
+// campos que só fazem sentido em atualização (não na criação)
+const updateUserSchema = createUserSchema.partial().extend({
+    ativo: z.boolean().optional()
+});
 
 module.exports = {
-    createUserSchema
+    createUserSchema,
+    updateUserSchema
 };

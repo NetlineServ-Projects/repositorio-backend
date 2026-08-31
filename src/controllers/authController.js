@@ -1,4 +1,5 @@
 const authService = require("../services/authService");
+const usuarioService = require("../services/usuarioService");
 const HTTP = require("../utils/httpsStatus");
 const MSG = require("../utils/messages");
 const response = require("../utils/response");
@@ -46,3 +47,15 @@ exports.alterarSenha = async (req, res, next) => {
         next(error);
     }
 };
+// =======================================
+// ATUALIZAR PERFIL (exclusivo ADMIN)
+// =======================================
+
+exports.atualizarPerfil = async (req, res, next) => {
+    try {
+        const usuarioAtualizado = await usuarioService.atualizarUsuario(req.user.id, req.body);
+        return response.success(res, MSG.USER.UPDATED, usuarioAtualizado, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};  

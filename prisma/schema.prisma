@@ -14,8 +14,10 @@ model Usuario {
   senha       String
   numero      String       @default("")
   cargo       String       @default("")
+  departamento String      @default("")
   perfil      Perfil       @default(FUNCIONARIO)
   ativo       Boolean      @default(true)
+  fotografia  String?      // caminho/URL da foto de perfil (nullable — nem todos terão)
   dataCriacao DateTime     @default(now())
 
 

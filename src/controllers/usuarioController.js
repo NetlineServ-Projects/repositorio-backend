@@ -65,3 +65,16 @@ exports.atualizarPreferencias = async (req, res, next) => {
         next(error);
     }
 };
+exports.atualizarFotografia = async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return response.error(res, MSG.VALIDATION.NO_FILE_UPLOADED, HTTP.BAD_REQUEST);
+        }
+        const userId = req.user.id;
+        const urlFotografia = `/uploads/avatars/${req.file.filename}`;
+        const usuarioAtualizado = await usuarioService.atualizarFotografia(userId, urlFotografia);
+        return response.success(res, MSG.USER.UPDATED, usuarioAtualizado, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};

@@ -6,6 +6,11 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const ROLES = require("../constants/roles");
 const AppError = require("../utils/AppError");
 const { formatarUsuario } = require("../utils/fileHelper");
+const fs = require("fs/promises");
+const path = require("path");
+
+
+const CAMPOS_PERMITIDOS_ATUALIZACAO = ["nome", "email", "senha", "numero", "cargo", "departamento", "perfil", "ativo"];
 
 exports.criarUsuario = async ({ nome, email, senha, numero, cargo, perfil }) => {
 
@@ -53,18 +58,6 @@ exports.buscarUsuarioPorId = async (id) => {
     return formatarUsuario(usuario);
 };
 
-exports.buscarUsuarioPorId = async (id) => {
-    const usuario = await prisma.usuario.findUnique({
-        where: { id: Number(id) }
-    });
-
-    if (!usuario) {
-        throw new AppError(MSG.USER.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
-    }
-
-    return formatarUsuario(usuario);
-};
-
 exports.atualizarUsuario = async (id, dadosAtualizacao) => {
     const idNumero = Number(id);
 
@@ -76,10 +69,16 @@ exports.atualizarUsuario = async (id, dadosAtualizacao) => {
         throw new AppError(MSG.USER.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
+    // Filtra apenas os campos permitidos vindos do body (evita mass assignment)
+    const dados = {};
+    for (const campo of CAMPOS_PERMITIDOS_ATUALIZACAO) {
+        if (dadosAtualizacao[campo] !== undefined) dados[campo] = dadosAtualizacao[campo];
+    }
+
     // Se houver alteração de email, verifica se já pertence a outro utilizador
-    if (dadosAtualizacao.email && dadosAtualizacao.email !== usuarioExistente.email) {
+    if (dados.email && dados.email !== usuarioExistente.email) {
         const emailEmUso = await prisma.usuario.findUnique({
-            where: { email: dadosAtualizacao.email }
+            where: { email: dados.email }
         });
 
         if (emailEmUso) {
@@ -88,13 +87,13 @@ exports.atualizarUsuario = async (id, dadosAtualizacao) => {
     }
 
     // Se enviou nova senha, gera o hash
-    if (dadosAtualizacao.senha) {
-        dadosAtualizacao.senha = await bcrypt.hash(dadosAtualizacao.senha, 10);
+    if (dados.senha) {
+        dados.senha = await bcrypt.hash(dados.senha, 10);
     }
 
     const usuarioAtualizado = await prisma.usuario.update({
         where: { id: idNumero },
-        data: dadosAtualizacao
+        data: dados
     });
 
     return formatarUsuario(usuarioAtualizado);
@@ -117,6 +116,7 @@ exports.eliminarUsuario = async (id) => {
 
     return true;
 };
+
 exports.atualizarPreferencias = async (userId, { temaEscuro, notificacoesEmail, idioma }) => {
     const dados = {};
 
@@ -128,6 +128,30 @@ exports.atualizarPreferencias = async (userId, { temaEscuro, notificacoesEmail, 
         where: { id: userId },
         data: dados
     });
+
+    return formatarUsuario(usuarioAtualizado);
+};
+
+
+
+exports.atualizarFotografia = async (userId, urlFotografia) => {
+    const usuarioExistente = await prisma.usuario.findUnique({
+        where: { id: userId }
+    });
+
+    if (!usuarioExistente) {
+        throw new AppError(MSG.USER.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const usuarioAtualizado = await prisma.usuario.update({
+        where: { id: userId },
+        data: { fotografia: urlFotografia }
+    });
+
+    if (usuarioExistente.fotografia) {
+        const caminhoAntigo = path.join("uploads/avatars", path.basename(usuarioExistente.fotografia));
+        fs.unlink(caminhoAntigo).catch(() => {});
+    }
 
     return formatarUsuario(usuarioAtualizado);
 };

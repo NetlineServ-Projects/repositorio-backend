@@ -1,3 +1,4 @@
+const multer = require("multer");
 const response = require("../utils/response");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const MESSAGES = require("../utils/messages");
@@ -8,6 +9,19 @@ function errorMiddleware(err, req, res, next) {
     // Erro conhecido, lançado intencionalmente por um service via AppError
     if (err.statusCode) {
         return response.error(res, err.message, err.statusCode);
+    }
+
+    // Erro do Multer — ficheiro excede o tamanho máximo, campo inesperado, etc.
+    if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+            return response.error(res, MESSAGES.VALIDATION.FILE_TOO_LARGE, HTTP_STATUS.BAD_REQUEST);
+        }
+        return response.error(res, MESSAGES.VALIDATION.INVALID_DATA, HTTP_STATUS.BAD_REQUEST);
+    }
+
+    // Erro customizado do fileFilter (tipo de documento não permitido)
+    if (err.code === "INVALID_DOCUMENT_TYPE") {
+        return response.error(res, MESSAGES.VALIDATION.INVALID_DOCUMENT_TYPE, HTTP_STATUS.BAD_REQUEST);
     }
 
     // Erro do Prisma — registo duplicado (ex: email já existe, nome de categoria já existe)
@@ -25,12 +39,3 @@ function errorMiddleware(err, req, res, next) {
 }
 
 module.exports = errorMiddleware;
-
-// É o middleware de tratamento centralizado de erros do Express. 
-// A ideia: em vez de cada controller/service ter que fazer try/catch
-//  e formatar a resposta de erro manualmente toda vez,
-//  qualquer erro não tratado (ex: throw new Error(...) num service, ou uma exceção do Prisma)
-//  "cai" automaticamente aqui, num único lugar.
-// Ele funciona porque o Express reconhece middlewares 
-// com 4 parâmetros (err, req, res, next) como tratadores de erro,
-//  e são sempre registados por último, depois de todas as rotas.

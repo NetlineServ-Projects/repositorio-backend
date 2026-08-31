@@ -47,7 +47,10 @@ module.exports = {
         REQUIRED_FIELDS: "Preencha todos os campos obrigatórios.",
         INVALID_DATA: "Os dados fornecidos são inválidos.",
         INVALID_ID: "ID inválido.",
-        CATEGORIA_REQUIRED: "A categoria é obrigatória."
+        CATEGORIA_REQUIRED: "A categoria é obrigatória.",
+        FILE_TOO_LARGE: "O ficheiro excede o tamanho máximo permitido (50MB).",
+        INVALID_DOCUMENT_TYPE: "Tipo de ficheiro não permitido. Formatos aceites: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG.",
+        NO_FILE_UPLOADED: "Nenhum ficheiro foi enviado."
     },
 
     SERVER: {
