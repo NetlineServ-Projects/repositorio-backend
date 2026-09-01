@@ -64,7 +64,7 @@ exports.atualizarDocumento = async (req, res, next) => {
             id,
             dadosAtualizacao,
             req.user.perfil,
-            req.user.nome
+            req.user // antes: req.user.nome — agora o service precisa também do id, para a Atividade
         );
         return response.success(res, MSG.DOCUMENTO.UPDATED, documentoAtualizado, HTTP.OK);
     } catch (error) {
@@ -76,7 +76,7 @@ exports.eliminarDocumento = async (req, res, next) => {
   try {
     const { id } = req.params;
     const definitivo = req.query.definitivo === "true";
-    await documentoService.eliminarDocumento(id, definitivo, req.user.nome);
+    await documentoService.eliminarDocumento(id, definitivo, req.user); // antes: req.user.nome
     return response.success(res, MSG.DOCUMENTO.DELETED, null, HTTP.OK);
   } catch (error) {
     next(error);

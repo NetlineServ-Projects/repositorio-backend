@@ -27,6 +27,7 @@ model Usuario {
 
 
   documentos   Documento[]
+  atividades   Atividade[]
 }
 
 model Documento{
@@ -52,6 +53,7 @@ model Documento{
   sistemaId     Int?
   sistema       Sistema?        @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
 
+  atividades Atividade[]
 }
 
 model Categoria {
@@ -88,11 +90,15 @@ model Sistema {
 }
 
 model Atividade {
-  id       String   @id @default(uuid())
-  usuario  String
-  acao     String
-  alvo     String?
-  criadoEm DateTime @default(now())
+  id          String    @id @default(uuid())
+  acao        String
+  criadoEm    DateTime  @default(now())
+
+  usuarioId   Int
+  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+
+  documentoId Int?                        // opcional — nem toda ação envolve um documento (ex: criação de utilizador)
+  documento   Documento? @relation(fields: [documentoId], references: [id])
 }
 
 
