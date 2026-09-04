@@ -7,11 +7,11 @@
 
 */
 -- Limpa dados antigos de teste (usuario/alvo eram texto solto, sem ligação real)
-DELETE FROM `atividade`;
+DELETE FROM `Atividade`;
 
 
 -- AlterTable
-ALTER TABLE `atividade` DROP COLUMN `alvo`,
+ALTER TABLE `Atividade` DROP COLUMN `alvo`,
     DROP COLUMN `usuario`,
     ADD COLUMN `documentoId` INTEGER NULL,
     ADD COLUMN `usuarioId` INTEGER NOT NULL;

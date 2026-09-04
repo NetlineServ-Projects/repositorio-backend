@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `documento` ADD COLUMN `apagadoEm` DATETIME(3) NULL;
+ALTER TABLE `Documento` ADD COLUMN `apagadoEm` DATETIME(3) NULL;

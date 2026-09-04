@@ -5,7 +5,7 @@
 
 */
 -- AlterTable
-ALTER TABLE `sistemas` DROP COLUMN `tecnologias`,
+ALTER TABLE `Sistemas` DROP COLUMN `tecnologias`,
     ADD COLUMN `ativo` BOOLEAN NOT NULL DEFAULT true,
     ADD COLUMN `repositorioUrl` VARCHAR(255) NULL,
     ADD COLUMN `responsavelTecnico` VARCHAR(255) NULL,

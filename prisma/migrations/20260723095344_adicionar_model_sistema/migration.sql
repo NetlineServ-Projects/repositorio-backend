@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `documento` ADD COLUMN `sistemaId` INTEGER NULL;
+ALTER TABLE `Documento` ADD COLUMN `sistemaId` INTEGER NULL;
 
 -- CreateTable
 CREATE TABLE `Sistema` (

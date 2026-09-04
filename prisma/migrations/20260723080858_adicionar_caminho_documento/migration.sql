@@ -5,4 +5,4 @@
 
 */
 -- AlterTable
-ALTER TABLE `documento` ADD COLUMN `caminho` VARCHAR(191) NOT NULL;
+ALTER TABLE `Documento` ADD COLUMN `caminho` VARCHAR(191) NOT NULL;

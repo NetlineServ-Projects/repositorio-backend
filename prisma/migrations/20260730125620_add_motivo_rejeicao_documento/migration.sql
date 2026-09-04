@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE `documento` ADD COLUMN `motivoRejeicao` VARCHAR(191) NULL;
+ALTER TABLE `Documento` ADD COLUMN `motivoRejeicao` VARCHAR(191) NULL;
