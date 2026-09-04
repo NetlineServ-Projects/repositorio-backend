@@ -1,4 +1,5 @@
 const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcrypt");
 
 const prisma = new PrismaClient();
 
@@ -75,17 +76,9 @@ async function main() {
             descricao: "Pareceres jurídicos, procurações, licenças de documentos legais",
             sensivel: true
         }
-
-
-
-
-
-
-
     ];
 
     for (const categoria of categorias) {
-
         await prisma.categoria.upsert({
             where: {
                 nome: categoria.nome
@@ -95,15 +88,42 @@ async function main() {
             },
             create: categoria
         });
-
     }
 
     console.log("Categorias inseridas com sucesso.");
+
+    // Cria o utilizador ADMIN a partir das variáveis de ambiente, se estiverem definidas
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_SENHA) {
+
+        const senhaHash = await bcrypt.hash(process.env.ADMIN_SENHA, 10);
+
+        await prisma.usuario.upsert({
+            where: {
+                email: process.env.ADMIN_EMAIL
+            },
+            update: {},
+            create: {
+                nome: process.env.ADMIN_NOME || "Administrador",
+                email: process.env.ADMIN_EMAIL,
+                senha: senhaHash,
+                numero: process.env.ADMIN_NUMERO || "",
+                cargo: process.env.ADMIN_CARGO || "Administrador",
+                departamento: process.env.ADMIN_DEPARTAMENTO || "",
+                perfil: "ADMIN",
+                ativo: true
+            }
+        });
+
+        console.log("Utilizador ADMIN garantido com sucesso.");
+    } else {
+        console.log("ADMIN_EMAIL/ADMIN_SENHA não definidos — utilizador ADMIN não foi criado.");
+    }
 }
 
 main()
     .catch((e) => {
         console.error(e);
+        process.exit(1);
     })
     .finally(async () => {
         await prisma.$disconnect();
