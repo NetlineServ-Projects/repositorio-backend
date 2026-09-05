@@ -1,8 +1,8 @@
 const prisma = require("../config/prisma");
 
-async function registrar(tx, { usuarioId, acao, documentoId }) {
+async function registrar(tx, { usuarioId, acao, documentoId, sistemaId }) {
   return tx.atividade.create({
-    data: { usuarioId, acao, documentoId },
+    data: { usuarioId, acao, documentoId, sistemaId },
   });
 }
 
@@ -13,6 +13,7 @@ async function listarRecentes(limite = 5) {
     include: {
       usuario: { select: { id: true, nome: true } },
       documento: { select: { id: true, titulo: true } },
+      sistema: { select: { id: true, nome: true } }, // NOVO
     },
   });
 }

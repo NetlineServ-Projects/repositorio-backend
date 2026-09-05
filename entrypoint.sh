@@ -1,13 +1,11 @@
 #!/bin/sh
 set -e
-npx prisma migrate deploy
-node prisma/seed.js
-node src/server.js 
 
 echo "Aguardando base de dados ficar disponível..."
-# Pequeno delay de segurança; o healthcheck do docker-compose já garante que o MySQL está pronto,
-# mas isto evita falhas em arranques muito rápidos
 sleep 3
+
+echo "A garantir que as pastas de upload existem..."
+mkdir -p uploads/avatars uploads/documentos
 
 echo "A aplicar migrações do Prisma..."
 npx prisma migrate deploy

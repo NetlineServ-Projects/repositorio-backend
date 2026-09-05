@@ -84,6 +84,7 @@ model Sistema {
   versaoAtual            String?       @db.VarChar(50)
   ativo                  Boolean       @default(true)
   documentos             Documento[]
+  atividades             Atividade[]  
   dataCriacao            DateTime      @default(now())
 
   @@map("sistemas")
@@ -98,7 +99,11 @@ model Atividade {
   usuario     Usuario   @relation(fields: [usuarioId], references: [id])
 
   documentoId Int?                        // opcional — nem toda ação envolve um documento (ex: criação de utilizador)
-  documento   Documento? @relation(fields: [documentoId], references: [id])
+  documento   Documento? @relation(fields: [documentoId], references: [id], onDelete: SetNull)
+
+  sistemaId   Int?                          
+  sistema     Sistema?   @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
+
 }
 
 

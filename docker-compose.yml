@@ -2,11 +2,14 @@ services:
   db:
     image: mysql:8
     restart: unless-stopped
+    command: --mysql-native-password=ON   # NOVO — ativa o plugin de autenticação compatível com o Prisma
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3307:3306"   # NOVO — 3307 no Windows aponta para o 3306 do contentor; 3306 do Windows continua livre para o MySQL local
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:

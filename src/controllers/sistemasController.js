@@ -15,7 +15,7 @@ class SistemaController {
 
   async criar(req, res, next) {
     try {
-      const novoSistema = await sistemaService.criar(req.body, req.user.nome);
+      const novoSistema = await sistemaService.criar(req.body, req.user); // antes: req.user.nome
       return response.success(res, MSG.SISTEMA.CREATED, novoSistema, HTTP.CREATED);
     } catch (error) {
       next(error);
@@ -25,7 +25,7 @@ class SistemaController {
   async atualizar(req, res, next) {
     try {
       const { id } = req.params;
-      const sistemaAtualizado = await sistemaService.atualizar(id, req.body, req.user.nome);
+      const sistemaAtualizado = await sistemaService.atualizar(id, req.body, req.user); // antes: req.user.nome
       return response.success(res, MSG.SISTEMA.UPDATED, sistemaAtualizado, HTTP.OK);
     } catch (error) {
       next(error);
@@ -35,7 +35,7 @@ class SistemaController {
   async apagar(req, res, next) {
     try {
       const { id } = req.params;
-      await sistemaService.apagar(id, req.user.nome);
+      await sistemaService.apagar(id, req.user); // antes: req.user.nome
       return response.success(res, MSG.SISTEMA.DELETED, null, HTTP.OK);
     } catch (error) {
       next(error);

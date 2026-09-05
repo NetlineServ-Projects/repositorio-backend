@@ -9,7 +9,7 @@ const mapStatusToEnum = (status) => {
   const statusMap = {
     "Em Desenvolvimento": "EM_DESENVOLVIMENTO",
     "Em Produção": "EM_PRODUCAO",
-    "Manutenção": "MANUTENCAO"
+    "Manutenção": "MANUTENCAO",
   };
   return statusMap[status] || "EM_DESENVOLVIMENTO";
 };
@@ -30,16 +30,16 @@ const montarDadosSistema = (dados) => ({
   urlProducao: dados.urlProducao || null,
   responsavelTecnico: dados.responsavelTecnico || null,
   versaoAtual: dados.versaoAtual || null,
-  ativo: dados.ativo !== undefined ? dados.ativo : true
+  ativo: dados.ativo !== undefined ? dados.ativo : true,
 });
 
 class SistemaService {
   async listarTodos() {
     const sistemas = await prisma.sistema.findMany({
       include: {
-        _count: { select: { documentos: true } }
+        _count: { select: { documentos: true } },
       },
-      orderBy: { dataCriacao: "desc" }
+      orderBy: { dataCriacao: "desc" },
     });
 
     return sistemas.map((sis) => ({
@@ -47,67 +47,78 @@ class SistemaService {
       desenvolvedores: sis.desenvolvedores || [],
       empresasClientes: sis.empresasClientes || [],
       tecnologias: sis.tecnologias || [],
-      totalDocumentos: sis._count.documentos
+      totalDocumentos: sis._count.documentos,
     }));
   }
 
-  async criar(dados, nomeUsuario) {
-    const novoSistema = await prisma.sistema.create({
-      data: montarDadosSistema(dados)
-    });
+  // usuarioAtual precisa de { id } (vem de req.user no controller) — não só do nome,
+  // porque a Atividade agora exige usuarioId (chave estrangeira real, não texto solto).
+  async criar(dados, usuarioAtual) {
+    const usuarioIdNum = usuarioAtual ? parseId(usuarioAtual.id, MSG.VALIDATION.INVALID_ID) : null;
 
-    if (nomeUsuario) {
-      await atividadeService.registrar({
-        usuario: nomeUsuario,
-        acao: "criou o sistema",
-        alvo: novoSistema.nome,
+    return prisma.$transaction(async (tx) => {
+      const novoSistema = await tx.sistema.create({
+        data: montarDadosSistema(dados),
       });
-    }
 
-    return novoSistema;
+      if (usuarioIdNum) {
+        await atividadeService.registrar(tx, {
+          usuarioId: usuarioIdNum,
+          acao: "criou o sistema",
+          sistemaId: novoSistema.id,
+        });
+      }
+
+      return novoSistema;
+    });
   }
 
-  async atualizar(id, dados, nomeUsuario) {
+  async atualizar(id, dados, usuarioAtual) {
     const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
+    const usuarioIdNum = usuarioAtual ? parseId(usuarioAtual.id, MSG.VALIDATION.INVALID_ID) : null;
 
-    const sistemaExiste = await prisma.sistema.findUnique({ where: { id: idNum } });
-    if (!sistemaExiste) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    return prisma.$transaction(async (tx) => {
+      const sistemaExiste = await tx.sistema.findUnique({ where: { id: idNum } });
+      if (!sistemaExiste) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-    const sistemaAtualizado = await prisma.sistema.update({
-      where: { id: idNum },
-      data: montarDadosSistema(dados)
-    });
-
-    if (nomeUsuario) {
-      await atividadeService.registrar({
-        usuario: nomeUsuario,
-        acao: "atualizou o sistema",
-        alvo: sistemaAtualizado.nome,
+      const sistemaAtualizado = await tx.sistema.update({
+        where: { id: idNum },
+        data: montarDadosSistema(dados),
       });
-    }
 
-    return sistemaAtualizado;
+      if (usuarioIdNum) {
+        await atividadeService.registrar(tx, {
+          usuarioId: usuarioIdNum,
+          acao: "atualizou o sistema",
+          sistemaId: sistemaAtualizado.id,
+        });
+      }
+
+      return sistemaAtualizado;
+    });
   }
 
-  async apagar(id, nomeUsuario) {
+  async apagar(id, usuarioAtual) {
     const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
+    const usuarioIdNum = usuarioAtual ? parseId(usuarioAtual.id, MSG.VALIDATION.INVALID_ID) : null;
 
-    const sistemaExiste = await prisma.sistema.findUnique({ where: { id: idNum } });
-    if (!sistemaExiste) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    return prisma.$transaction(async (tx) => {
+      const sistemaExiste = await tx.sistema.findUnique({ where: { id: idNum } });
+      if (!sistemaExiste) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-    const sistemaApagado = await prisma.sistema.delete({
-      where: { id: idNum }
+      const sistemaApagado = await tx.sistema.delete({ where: { id: idNum } });
+
+      if (usuarioIdNum) {
+        // sistemaId fica de fora (o sistema já não existe depois deste delete) —
+        // por isso o nome vai no próprio texto da ação, não numa relação.
+        await atividadeService.registrar(tx, {
+          usuarioId: usuarioIdNum,
+          acao: `eliminou o sistema "${sistemaApagado.nome}"`,
+        });
+      }
+
+      return sistemaApagado;
     });
-
-    if (nomeUsuario) {
-      await atividadeService.registrar({
-        usuario: nomeUsuario,
-        acao: "eliminou o sistema",
-        alvo: sistemaApagado.nome,
-      });
-    }
-
-    return sistemaApagado;
   }
 
   async obterPorId(id) {
@@ -115,7 +126,7 @@ class SistemaService {
 
     const sistema = await prisma.sistema.findUnique({
       where: { id: idNum },
-      include: { documentos: true }
+      include: { documentos: true },
     });
 
     if (!sistema) throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
