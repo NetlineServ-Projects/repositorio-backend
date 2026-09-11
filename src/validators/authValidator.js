@@ -17,8 +17,13 @@ const atualizarPerfilSchema = z.object({
     numero: z.string().optional()
 });
 
+const reautenticarSchema = z.object({
+    senha: z.string().min(1, "A password é obrigatória."),
+});
+
 module.exports = {
     loginSchema,
     alterarSenhaSchema,
-    atualizarPerfilSchema
+    atualizarPerfilSchema,
+    reautenticarSchema
 };

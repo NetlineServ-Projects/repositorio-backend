@@ -47,6 +47,7 @@ exports.alterarSenha = async (req, res, next) => {
         next(error);
     }
 };
+
 // =======================================
 // ATUALIZAR PERFIL (exclusivo ADMIN)
 // =======================================
@@ -58,4 +59,18 @@ exports.atualizarPerfil = async (req, res, next) => {
     } catch (error) {
         next(error);
     }
-};  
+};
+
+// =======================================
+// REAUTENTICAR (confirma password para aceder a dados sensíveis
+// de infraestrutura — emite um token elevado, válido por 15 min)
+// =======================================
+
+exports.reautenticar = async (req, res, next) => {
+    try {
+        const resultado = await authService.reautenticar(req.user.id, req.body);
+        return response.success(res, MSG.AUTH.REAUTENTICACAO_SUCESSO, resultado, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};

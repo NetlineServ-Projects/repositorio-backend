@@ -9,7 +9,9 @@ module.exports = {
         INVALID_OR_EXPIRED_TOKEN: "Token inválido ou expirado.",
 
         UNAUTHORIZED: "Utilizador não autenticado.",
-        FORBIDDEN: "Não tem permissão para realizar esta ação."
+        FORBIDDEN: "Não tem permissão para realizar esta ação.",
+        REAUTENTICACAO_NECESSARIA: "É necessário reautenticar-se para aceder a estes dados.",
+        TOKEN_INVALIDO: "Token elevado inválido.",
     },
 
     USER: {
@@ -40,7 +42,10 @@ module.exports = {
         CREATED: "Sistema criado com sucesso.",
         UPDATED: "Sistema atualizado com sucesso.",
         DELETED: "Sistema eliminado com sucesso.",
-        NOT_FOUND: "Sistema não encontrado."
+        NOT_FOUND: "Sistema não encontrado.",
+        INFRAESTRUTURA_ATUALIZADA: "Dados de infraestrutura atualizados com sucesso.",
+        CREDENCIAL_ADICIONADA: "Credencial adicionada com sucesso.",
+        CREDENCIAL_APAGADA: "Credencial apagada com sucesso."
     },
 
     VALIDATION: {

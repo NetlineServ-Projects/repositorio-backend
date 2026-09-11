@@ -6,7 +6,12 @@ const authMiddleware = require("../../middlewares/authMiddleware");
 const authorize = require("../../middlewares/roleMiddleware");
 const validate = require("../../validators/validate");
 
-const { loginSchema, alterarSenhaSchema, atualizarPerfilSchema } = require("../../validators/authValidator");
+const {
+    loginSchema,
+    alterarSenhaSchema,
+    atualizarPerfilSchema,
+    reautenticarSchema,
+} = require("../../validators/authValidator");
 
 // Login (rota pública)
 router.post("/login", validate(loginSchema), authController.login);
@@ -19,5 +24,9 @@ router.patch("/senha", authMiddleware, validate(alterarSenhaSchema), authControl
 
 // Atualizar o próprio perfil (nome, email, cargo, departamento) — exclusivo ADMIN
 router.patch("/me", authMiddleware, authorize("ADMIN"), validate(atualizarPerfilSchema), authController.atualizarPerfil);
+
+// Reautenticar (confirma password novamente) — usado antes de aceder a
+// dados sensíveis de infraestrutura; emite o token elevado de 15 min
+router.post("/reautenticar", authMiddleware, validate(reautenticarSchema), authController.reautenticar);
 
 module.exports = router;

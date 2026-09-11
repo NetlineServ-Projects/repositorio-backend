@@ -2,11 +2,13 @@ const prisma = require("../config/prisma");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
+
 const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { formatarUsuario } = require("../utils/fileHelper");
 
+const DURACAO_TOKEN_ELEVADO = "15m";
 
 // LOGIN
 exports.login = async ({ email, senha }) => {
@@ -81,4 +83,30 @@ exports.alterarSenha = async (userId, { senhaAtual, novaSenha }) => {
     });
 
     return { mensagem: "Palavra-passe alterada com sucesso." };
+};
+
+
+exports.reautenticar = async (usuarioId, { senha }) => {
+    const usuario = await prisma.usuario.findUnique({
+        where: { id: usuarioId },
+        select: { id: true, senha: true },
+    });
+
+    if (!usuario) {
+        throw new AppError("Utilizador não encontrado.", 404);
+    }
+
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+    if (!senhaValida) {
+        throw new AppError("Password incorreta.", 401);
+    }
+
+    const tokenElevado = jwt.sign(
+        { usuarioId: usuario.id, tipo: "elevado" },
+        process.env.JWT_SECRET,
+        { expiresIn: DURACAO_TOKEN_ELEVADO }
+    );
+
+    return { tokenElevado, expiraEm: DURACAO_TOKEN_ELEVADO };
 };
