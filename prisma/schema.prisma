@@ -8,136 +8,135 @@ datasource db {
 }
 
 model Usuario {
-  id          Int          @id @default(autoincrement())
-  nome        String
-  email       String       @unique
-  senha       String
-  numero      String       @default("")
-  cargo       String       @default("")
-  departamento String      @default("")
-  perfil      Perfil       @default(FUNCIONARIO)
-  ativo       Boolean      @default(true)
-  fotografia  String?      // caminho/URL da foto de perfil (nullable — nem todos terão)
-  dataCriacao DateTime     @default(now())
+  id           Int      @id @default(autoincrement())
+  nome         String
+  email        String   @unique
+  senha        String
+  numero       String   @default("")
+  cargo        String   @default("")
+  departamento String   @default("")
+  perfil       Perfil   @default(FUNCIONARIO)
+  ativo        Boolean  @default(true)
+  fotografia   String?  // caminho/URL da foto de perfil (nullable — nem todos terão)
+  dataCriacao  DateTime @default(now())
 
+  temaEscuro        Boolean @default(false)
+  notificacoesEmail Boolean @default(true)
+  idioma            String  @default("pt")
 
-  temaEscuro          Boolean @default(false)
-  notificacoesEmail   Boolean @default(true)
-  idioma              String  @default("pt")
-
-
-  documentos   Documento[]
-  atividades   Atividade[]
+  documentos Documento[]
+  atividades Atividade[]
 }
 
-model Documento{
- id              Int       @id @default(autoincrement())
-  titulo          String
-  descricao       String?
-  nomeArquivo     String
-  caminho         String          // O caminho real ou URL no servidor (ex: "storage/uploads/xyz-123.pdf")
-  tipoArquivo     String
-  tamanho         BigInt
-  estado          EstadoDocumento @default(PENDENTE)
-  dataSubmissao   DateTime @default(now())
-  motivoRejeicao  String? 
-  apagadoEm       DateTime?
+model Documento {
+  id             Int             @id @default(autoincrement())
+  titulo         String
+  descricao      String?
+  nomeArquivo    String
+  caminho        String // O caminho real ou URL no servidor (ex: "storage/uploads/xyz-123.pdf")
+  tipoArquivo    String
+  tamanho        BigInt
+  estado         EstadoDocumento @default(PENDENTE)
+  dataSubmissao  DateTime        @default(now())
+  motivoRejeicao String?
+  apagadoEm      DateTime?
 
-  usuarioId    Int
-  usuario      Usuario @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
 
-  categoriaId     Int
-  categoria        Categoria @relation(fields: [categoriaId], references: [id])
+  categoriaId Int
+  categoria   Categoria @relation(fields: [categoriaId], references: [id])
 
   // Relação opcional com Sistema (um documento pode ou não pertencer a um sistema)
-  sistemaId     Int?
-  sistema       Sistema?        @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
+  sistemaId Int?
+  sistema   Sistema? @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
 
   atividades Atividade[]
 }
 
 model Categoria {
-  id          Int      @id @default(autoincrement())
-  nome        String   @unique
-  descricao   String?
-  sensivel    Boolean  @default(false)
+  id        Int     @id @default(autoincrement())
+  nome      String  @unique
+  descricao String?
+  sensivel  Boolean @default(false)
 
-  documentos  Documento[]
+  documentos Documento[]
 }
 
 model Sistema {
-  id                     Int           @id @default(autoincrement())
-  nome                   String        @db.VarChar(255)
-  desenvolvedores        Json
-  empresasClientes       Json
-  descricaoCurta         String?       @db.VarChar(255)
-  descricaoLonga         String?       @db.Text
-  dataInicio             DateTime
-  dataEntrega            DateTime?
-  status                 StatusSistema @default(EM_DESENVOLVIMENTO)
-  tecnologiasFrontend    Json?
-  tecnologiasBackend     Json?
+  id                        Int           @id @default(autoincrement())
+  nome                      String        @db.VarChar(255)
+  desenvolvedores           Json
+  empresasClientes          Json
+  descricaoCurta            String?       @db.VarChar(255)
+  descricaoLonga            String?       @db.Text
+  dataInicio                DateTime
+  dataEntrega               DateTime?
+  status                    StatusSistema @default(EM_DESENVOLVIMENTO)
+  tecnologiasFrontend       Json?
+  tecnologiasBackend        Json?
   tecnologiasInfraestrutura Json?
-  repositorioUrl         String?       @db.VarChar(255)
-  urlProducao            String?       @db.VarChar(255)
-  responsavelTecnico     String?       @db.VarChar(255)
-  versaoAtual            String?       @db.VarChar(50)
-  ativo                  Boolean       @default(true)
-  documentos             Documento[]
-  atividades             Atividade[]  
-  dataCriacao            DateTime      @default(now())
+  repositorioUrl            String?       @db.VarChar(255)
+  urlProducao               String?       @db.VarChar(255)
+  responsavelTecnico        String?       @db.VarChar(255)
+  versaoAtual               String?       @db.VarChar(50)
+  ativo                     Boolean       @default(true)
+  documentos                Documento[]
+  atividades                Atividade[]
+  dataCriacao               DateTime      @default(now())
 
-
-  infraestrutura       SistemaInfraestrutura?
+  // Um sistema passa a ter várias infraestruturas — uma por ambiente
+  infraestruturas SistemaInfraestrutura[]
 
   @@map("sistemas")
 }
 
 model SistemaInfraestrutura {
-  id             Int      @id @default(autoincrement())
-  sistemaId      Int      @unique
-  sistema        Sistema  @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
+  id        Int          @id @default(autoincrement())
+  sistemaId Int
+  sistema   Sistema      @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
 
-  ipServidor     String?  @db.Text  // valor encriptado (AES-256-GCM)
-  cloudProvedor  String?  @db.Text  // valor encriptado (AES-256-GCM)
+  ambiente TipoAmbiente @default(PRODUCAO)
 
-  credenciais    CredencialSistema[]
+  ipServidor    String? @db.Text // valor encriptado (AES-256-GCM)
+  cloudProvedor String? @db.Text // valor encriptado (AES-256-GCM)
 
-  criadoEm       DateTime @default(now())
-  atualizadoEm   DateTime @updatedAt
+  credenciais CredencialSistema[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  // Um sistema só pode ter UMA infraestrutura por tipo de ambiente
+  @@unique([sistemaId, ambiente])
 }
 
 model CredencialSistema {
-  id                      Int      @id @default(autoincrement())
+  id                      Int                   @id @default(autoincrement())
   sistemaInfraestruturaId Int
   sistemaInfraestrutura   SistemaInfraestrutura @relation(fields: [sistemaInfraestruturaId], references: [id], onDelete: Cascade)
 
   tipo            TipoCredencial
   label           String
-  valorEncriptado String   @db.Text  // conteúdo encriptado (AES-256-GCM)
+  valorEncriptado String         @db.Text // conteúdo encriptado (AES-256-GCM)
 
-  criadoEm        DateTime @default(now())
-  atualizadoEm    DateTime @updatedAt
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
 }
-
-
 
 model Atividade {
-  id          String    @id @default(uuid())
-  acao        String
-  criadoEm    DateTime  @default(now())
+  id       String   @id @default(uuid())
+  acao     String
+  criadoEm DateTime @default(now())
 
-  usuarioId   Int
-  usuario     Usuario   @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
 
-  documentoId Int?                        // opcional — nem toda ação envolve um documento (ex: criação de utilizador)
+  documentoId Int? // opcional — nem toda ação envolve um documento (ex: criação de utilizador)
   documento   Documento? @relation(fields: [documentoId], references: [id], onDelete: SetNull)
 
-  sistemaId   Int?                          
-  sistema     Sistema?   @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
-
+  sistemaId Int?
+  sistema   Sistema? @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
 }
-
 
 enum EstadoDocumento {
   PENDENTE
@@ -151,9 +150,15 @@ enum Perfil {
 }
 
 enum StatusSistema {
-  EM_PRODUCAO       @map("Em Produção")
+  EM_PRODUCAO        @map("Em Produção")
   EM_DESENVOLVIMENTO @map("Em Desenvolvimento")
-  MANUTENCAO        @map("Manutenção")
+  MANUTENCAO         @map("Manutenção")
+}
+
+enum TipoAmbiente {
+  PRODUCAO
+  TESTES
+  DESENVOLVIMENTO
 }
 
 enum TipoCredencial {
