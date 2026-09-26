@@ -12,8 +12,7 @@ module.exports = {
         FORBIDDEN: "You do not have permission to perform this action.",
         REAUTENTICACAO_NECESSARIA: "Re-authentication is required to access this data.",
         TOKEN_INVALIDO: "Invalid elevated token.",
-        
-    
+        REAUTENTICACAO_SUCESSO: "Re-authentication confirmed."
     },
 
     USER: {
@@ -48,6 +47,10 @@ module.exports = {
         INFRAESTRUTURA_ATUALIZADA: "Infrastructure data successfully updated.",
         CREDENCIAL_ADICIONADA: "Credential successfully added.",
         CREDENCIAL_APAGADA: "Credential successfully deleted.",
+        INFRAESTRUTURA_OBTIDA: "Infrastructure obtained successfully.",
+        INFRAESTRUTURA_SEM_DADOS: "This system does not have infrastructure data registered yet.",
+        CREDENCIAL_ATUALIZADA: "Credential successfully updated.",
+        CREDENCIAL_NAO_ENCONTRADA: "Credential not found."
     },
 
     VALIDATION: {

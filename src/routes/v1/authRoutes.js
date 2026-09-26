@@ -26,7 +26,7 @@ router.patch("/senha", authMiddleware, validate(alterarSenhaSchema), authControl
 router.patch("/me", authMiddleware, authorize("ADMIN"), validate(atualizarPerfilSchema), authController.atualizarPerfil);
 
 // Reautenticar (confirma password novamente) — usado antes de aceder a
-// dados sensíveis de infraestrutura; emite o token elevado de 15 min
+// dados sensíveis de infraestrutura; emite o token elevado de 3 min
 router.post("/reautenticar", authMiddleware, validate(reautenticarSchema), authController.reautenticar);
 
 module.exports = router;

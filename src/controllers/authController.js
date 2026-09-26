@@ -7,7 +7,6 @@ const response = require("../utils/response");
 // =======================================
 // LOGIN
 // =======================================
-
 exports.login = async (req, res, next) => {
     try {
         const result = await authService.login(req.body);
@@ -18,9 +17,8 @@ exports.login = async (req, res, next) => {
 };
 
 // =======================================
-// UTILIZADOR AUTENTICADO
+// UTILIZADOR AUTENTICADO (PERFIL ATUAL)
 // =======================================
-
 exports.me = async (req, res, next) => {
     try {
         const user = await authService.getUserById(req.user.id);
@@ -36,9 +34,8 @@ exports.me = async (req, res, next) => {
 };
 
 // =======================================
-// ALTERAR SENHA (opcional, feito pelo próprio utilizador)
+// ALTERAR SENHA
 // =======================================
-
 exports.alterarSenha = async (req, res, next) => {
     try {
         const resultado = await authService.alterarSenha(req.user.id, req.body);
@@ -49,12 +46,15 @@ exports.alterarSenha = async (req, res, next) => {
 };
 
 // =======================================
-// ATUALIZAR PERFIL (exclusivo ADMIN)
+// ATUALIZAR PERFIL DE OUTRO UTILIZADOR (ADMIN)
+// Nota: Utiliza req.params.id caso o Admin esteja a editar um terceiro,
+// ou req.user.id se for o próprio perfil.
 // =======================================
-
 exports.atualizarPerfil = async (req, res, next) => {
     try {
-        const usuarioAtualizado = await usuarioService.atualizarUsuario(req.user.id, req.body);
+        const targetUserId = req.params.id || req.user.id;
+        const usuarioAtualizado = await usuarioService.atualizarUsuario(targetUserId, req.body);
+        
         return response.success(res, MSG.USER.UPDATED, usuarioAtualizado, HTTP.OK);
     } catch (error) {
         next(error);
@@ -62,10 +62,8 @@ exports.atualizarPerfil = async (req, res, next) => {
 };
 
 // =======================================
-// REAUTENTICAR (confirma password para aceder a dados sensíveis
-// de infraestrutura — emite um token elevado, válido por 15 min)
+// REAUTENTICAR (TOKEN ELEVADO DE INFRAESTRUTURA)
 // =======================================
-
 exports.reautenticar = async (req, res, next) => {
     try {
         const resultado = await authService.reautenticar(req.user.id, req.body);

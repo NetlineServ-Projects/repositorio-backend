@@ -12,6 +12,7 @@ module.exports = {
         FORBIDDEN: "Não tem permissão para realizar esta ação.",
         REAUTENTICACAO_NECESSARIA: "É necessário reautenticar-se para aceder a estes dados.",
         TOKEN_INVALIDO: "Token elevado inválido.",
+        REAUTENTICACAO_SUCESSO: "Reautenticação confirmada."
     },
 
     USER: {
@@ -45,7 +46,11 @@ module.exports = {
         NOT_FOUND: "Sistema não encontrado.",
         INFRAESTRUTURA_ATUALIZADA: "Dados de infraestrutura atualizados com sucesso.",
         CREDENCIAL_ADICIONADA: "Credencial adicionada com sucesso.",
-        CREDENCIAL_APAGADA: "Credencial apagada com sucesso."
+        CREDENCIAL_APAGADA: "Credencial apagada com sucesso.",
+        INFRAESTRUTURA_OBTIDA: "Infraestrutura obtida com sucesso.",
+        INFRAESTRUTURA_SEM_DADOS: "Este sistema ainda não tem infraestrutura registada.",
+        CREDENCIAL_ATUALIZADA: "Credencial atualizada com sucesso.",
+        CREDENCIAL_NAO_ENCONTRADA: "Credencial não encontrada.",
     },
 
     VALIDATION: {

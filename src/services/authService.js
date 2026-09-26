@@ -8,7 +8,7 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { formatarUsuario } = require("../utils/fileHelper");
 
-const DURACAO_TOKEN_ELEVADO = "15m";
+const DURACAO_TOKEN_ELEVADO = "3m";
 
 // LOGIN
 exports.login = async ({ email, senha }) => {
@@ -85,21 +85,23 @@ exports.alterarSenha = async (userId, { senhaAtual, novaSenha }) => {
     return { mensagem: "Palavra-passe alterada com sucesso." };
 };
 
-
+// REAUTENTICAR (confirma password novamente antes de aceder a dados
+// sensíveis de infraestrutura — emite um token elevado, válido por 3 min)
 exports.reautenticar = async (usuarioId, { senha }) => {
+
     const usuario = await prisma.usuario.findUnique({
         where: { id: usuarioId },
-        select: { id: true, senha: true },
+        select: { id: true, senha: true }
     });
 
     if (!usuario) {
-        throw new AppError("Utilizador não encontrado.", 404);
+        throw new AppError(MSG.AUTH.USER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
     const senhaValida = await bcrypt.compare(senha, usuario.senha);
 
     if (!senhaValida) {
-        throw new AppError("Password incorreta.", 401);
+        throw new AppError(MSG.AUTH.INVALID_PASSWORD, HTTP_STATUS.UNAUTHORIZED);
     }
 
     const tokenElevado = jwt.sign(

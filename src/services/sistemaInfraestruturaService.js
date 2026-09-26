@@ -1,7 +1,16 @@
 const prisma = require("../config/prisma");
-const AppError = require("../errors/AppError"); // ajusta o caminho conforme onde a tua está
+const AppError = require("../utils/AppError");
+const MSG = require("../utils/messages");
+const HTTP_STATUS = require("../utils/httpsStatus");
 const { encriptar, desencriptar } = require("../utils/crypto");
 const atividadeService = require("./atividadeService");
+
+// Rótulos legíveis do ambiente para o registo de atividades
+const ROTULO_AMBIENTE = {
+  PRODUCAO: "Produção",
+  TESTES: "Testes",
+  DESENVOLVIMENTO: "Desenvolvimento",
+};
 
 /**
  * Confirma que o sistema existe e devolve o seu nome (usado nas mensagens de Atividade).
@@ -13,31 +22,28 @@ async function obterSistemaOuFalhar(sistemaId) {
   });
 
   if (!sistema) {
-    throw new AppError("Sistema não encontrado.", 404);
+    throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
   }
 
   return sistema;
 }
 
 /**
- * Busca uma credencial já com o nome do sistema associado (usado em
- * atualizar/apagar), sem carregar o valorEncriptado para memória à toa.
+ * Busca uma credencial garantindo que pertence ao sistema E ao ambiente do URL.
+ * Sem esta verificação, um id de credencial de outro sistema/ambiente seria
+ * aceite por qualquer caminho (IDOR). Não carrega o valorEncriptado.
  */
-async function obterCredencialOuFalhar(credencialId) {
-  const credencial = await prisma.credencialSistema.findUnique({
-    where: { id: credencialId },
-    select: {
-      id: true,
-      tipo: true,
-      label: true,
-      sistemaInfraestrutura: {
-        select: { sistema: { select: { id: true, nome: true } } },
-      },
+async function obterCredencialOuFalhar(credencialId, sistemaId, ambiente) {
+  const credencial = await prisma.credencialSistema.findFirst({
+    where: {
+      id: credencialId,
+      sistemaInfraestrutura: { sistemaId, ambiente },
     },
+    select: { id: true, tipo: true, label: true },
   });
 
   if (!credencial) {
-    throw new AppError("Credencial não encontrada.", 404);
+    throw new AppError(MSG.SISTEMA.CREDENCIAL_NAO_ENCONTRADA, HTTP_STATUS.NOT_FOUND);
   }
 
   return credencial;
@@ -46,43 +52,72 @@ async function obterCredencialOuFalhar(credencialId) {
 /**
  * Envolve a chamada a desencriptar() para nunca deixar escapar um erro
  * nativo (com stack trace) até ao cliente — só um AppError limpo.
+ * Campos ainda não preenchidos (ex.: infraestrutura criada só para guardar
+ * credenciais, sem IP/cloud) devolvem null em vez de tentar desencriptar.
  */
 function desencriptarOuFalhar(valorEncriptado, contexto) {
+  if (valorEncriptado === null || valorEncriptado === undefined) {
+    return null;
+  }
+
   try {
     return desencriptar(valorEncriptado);
   } catch (erro) {
     throw new AppError(
       `Não foi possível desencriptar ${contexto}. Verifique a chave de encriptação.`,
-      500
+      HTTP_STATUS.INTERNAL_SERVER_ERROR
     );
   }
 }
 
 /**
- * Etapa 4 — gravação segura de ipServidor/cloudProvedor.
- * Cria a SistemaInfraestrutura se ainda não existir (1-para-1 com Sistema).
+ * Lista os ambientes que já têm infraestrutura registada para o sistema.
+ * Não devolve valores sensíveis (nada é desencriptado), por isso não gera
+ * registo de atividade.
  */
-async function salvarInfraestrutura(sistemaId, { ipServidor, cloudProvedor }, usuarioId) {
+async function listarInfraestruturas(sistemaId) {
+  await obterSistemaOuFalhar(sistemaId);
+
+  const infraestruturas = await prisma.sistemaInfraestrutura.findMany({
+    where: { sistemaId },
+    select: {
+      id: true,
+      ambiente: true,
+      _count: { select: { credenciais: true } },
+    },
+    orderBy: { ambiente: "asc" },
+  });
+
+  return infraestruturas.map((i) => ({
+    id: i.id,
+    ambiente: i.ambiente,
+    totalCredenciais: i._count.credenciais,
+  }));
+}
+
+/**
+ * Cria ou atualiza a infraestrutura de UM ambiente do sistema (upsert por
+ * sistema + ambiente). Só o que vier definido é alterado.
+ */
+async function salvarInfraestrutura(sistemaId, ambiente, { ipServidor, cloudProvedor }, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
+
+  const dados = {
+    ipServidor: ipServidor !== undefined ? encriptar(ipServidor) : undefined,
+    cloudProvedor: cloudProvedor !== undefined ? encriptar(cloudProvedor) : undefined,
+  };
 
   return prisma.$transaction(async (tx) => {
     const infraestrutura = await tx.sistemaInfraestrutura.upsert({
-      where: { sistemaId },
-      update: {
-        ipServidor: ipServidor !== undefined ? encriptar(ipServidor) : undefined,
-        cloudProvedor: cloudProvedor !== undefined ? encriptar(cloudProvedor) : undefined,
-      },
-      create: {
-        sistemaId,
-        ipServidor: encriptar(ipServidor),
-        cloudProvedor: encriptar(cloudProvedor),
-      },
-      select: { id: true }, // nunca devolver os valores encriptados sem necessidade
+      where: { sistemaId_ambiente: { sistemaId, ambiente } },
+      update: dados,
+      create: { sistemaId, ambiente, ...dados },
+      select: { id: true, ambiente: true }, // nunca devolver os valores encriptados sem necessidade
     });
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Atualizou dados de infraestrutura do sistema "${sistema.nome}"`,
+      acao: `Atualizou dados de infraestrutura (${ROTULO_AMBIENTE[ambiente]}) do sistema "${sistema.nome}"`,
       sistemaId,
     });
 
@@ -91,24 +126,26 @@ async function salvarInfraestrutura(sistemaId, { ipServidor, cloudProvedor }, us
 }
 
 /**
- * Etapa 5 — leitura só deve ser chamada por uma rota já protegida com
- * ADMIN + reautenticação (token elevado). O service não valida isso;
- * isso é responsabilidade do middleware da rota (authMiddleware + exigirReautenticacao).
+ * Leitura de UM ambiente, já desencriptado. Só deve ser chamada por uma rota
+ * protegida com reautenticação (token elevado). Disponível para ADMIN e
+ * FUNCIONARIO — a restrição de perfil só se aplica às operações de escrita.
+ * Só se desencripta o ambiente pedido, e cada leitura fica auditada.
  */
-async function obterInfraestrutura(sistemaId, usuarioId) {
+async function obterInfraestrutura(sistemaId, ambiente, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
 
   const infraestrutura = await prisma.sistemaInfraestrutura.findUnique({
-    where: { sistemaId },
+    where: { sistemaId_ambiente: { sistemaId, ambiente } },
     include: { credenciais: true },
   });
 
   if (!infraestrutura) {
-    return null; // sistema ainda sem infraestrutura registada — não é erro
+    return null; // ambiente ainda sem infraestrutura registada — não é erro
   }
 
   const resultado = {
     id: infraestrutura.id,
+    ambiente: infraestrutura.ambiente,
     ipServidor: desencriptarOuFalhar(infraestrutura.ipServidor, "o IP do servidor"),
     cloudProvedor: desencriptarOuFalhar(infraestrutura.cloudProvedor, "o fornecedor de cloud"),
     credenciais: infraestrutura.credenciais.map((c) => ({
@@ -119,24 +156,23 @@ async function obterInfraestrutura(sistemaId, usuarioId) {
     })),
   };
 
-  // Etapa 6 — cada leitura de dados sensíveis fica auditada
   await atividadeService.registrar(prisma, {
     usuarioId,
-    acao: `Visualizou infraestrutura do sistema "${sistema.nome}"`,
+    acao: `Visualizou infraestrutura (${ROTULO_AMBIENTE[ambiente]}) do sistema "${sistema.nome}"`,
     sistemaId,
   });
 
   return resultado;
 }
 
-async function adicionarCredencial(sistemaId, { tipo, label, valor }, usuarioId) {
+async function adicionarCredencial(sistemaId, ambiente, { tipo, label, valor }, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
 
   return prisma.$transaction(async (tx) => {
     const infraestrutura = await tx.sistemaInfraestrutura.upsert({
-      where: { sistemaId },
+      where: { sistemaId_ambiente: { sistemaId, ambiente } },
       update: {},
-      create: { sistemaId },
+      create: { sistemaId, ambiente },
       select: { id: true },
     });
 
@@ -152,7 +188,7 @@ async function adicionarCredencial(sistemaId, { tipo, label, valor }, usuarioId)
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Adicionou credencial "${label}" (${tipo}) ao sistema "${sistema.nome}"`,
+      acao: `Adicionou credencial "${label}" (${tipo}) ao ambiente ${ROTULO_AMBIENTE[ambiente]} do sistema "${sistema.nome}"`,
       sistemaId,
     });
 
@@ -161,19 +197,19 @@ async function adicionarCredencial(sistemaId, { tipo, label, valor }, usuarioId)
 }
 
 /**
- * Atualiza uma credencial existente. Todos os campos são opcionais —
- * só o que vier definido é alterado (mesmo padrão usado em salvarInfraestrutura).
+ * Atualiza uma credencial existente do ambiente indicado. Todos os campos são
+ * opcionais — só o que vier definido é alterado.
  */
-async function atualizarCredencial(credencialId, { tipo, label, valor }, usuarioId) {
-  const credencialExistente = await obterCredencialOuFalhar(credencialId);
-  const { sistema } = credencialExistente.sistemaInfraestrutura;
+async function atualizarCredencial(sistemaId, ambiente, credencialId, { tipo, label, valor }, usuarioId) {
+  const sistema = await obterSistemaOuFalhar(sistemaId);
+  await obterCredencialOuFalhar(credencialId, sistemaId, ambiente);
 
   return prisma.$transaction(async (tx) => {
     const credencial = await tx.credencialSistema.update({
       where: { id: credencialId },
       data: {
-        tipo: tipo !== undefined ? tipo : undefined,
-        label: label !== undefined ? label : undefined,
+        tipo,
+        label,
         valorEncriptado: valor !== undefined ? encriptar(valor) : undefined,
       },
       select: { id: true, tipo: true, label: true },
@@ -181,7 +217,7 @@ async function atualizarCredencial(credencialId, { tipo, label, valor }, usuario
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Atualizou credencial "${credencial.label}" (${credencial.tipo}) do sistema "${sistema.nome}"`,
+      acao: `Atualizou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${ROTULO_AMBIENTE[ambiente]} do sistema "${sistema.nome}"`,
       sistemaId: sistema.id,
     });
 
@@ -189,22 +225,23 @@ async function atualizarCredencial(credencialId, { tipo, label, valor }, usuario
   });
 }
 
-async function apagarCredencial(credencialId, usuarioId) {
-  const credencial = await obterCredencialOuFalhar(credencialId);
-  const { sistema } = credencial.sistemaInfraestrutura;
+async function apagarCredencial(sistemaId, ambiente, credencialId, usuarioId) {
+  const sistema = await obterSistemaOuFalhar(sistemaId);
+  const credencial = await obterCredencialOuFalhar(credencialId, sistemaId, ambiente);
 
   return prisma.$transaction(async (tx) => {
     await tx.credencialSistema.delete({ where: { id: credencialId } });
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Apagou credencial "${credencial.label}" (${credencial.tipo}) do sistema "${sistema.nome}"`,
+      acao: `Apagou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${ROTULO_AMBIENTE[ambiente]} do sistema "${sistema.nome}"`,
       sistemaId: sistema.id,
     });
   });
 }
 
 module.exports = {
+  listarInfraestruturas,
   salvarInfraestrutura,
   obterInfraestrutura,
   adicionarCredencial,
