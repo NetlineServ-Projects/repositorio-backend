@@ -26,6 +26,8 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+    volumes:
+    - ./uploads:/app/uploads  
     environment:
       DATABASE_URL: mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
