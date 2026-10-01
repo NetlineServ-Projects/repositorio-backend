@@ -1,38 +1,54 @@
 services:
+
   db:
     image: mysql:8
     restart: unless-stopped
-    command: --mysql-native-password=ON   # ativa o plugin de autenticação compatível com o Prisma
+
+    command: --mysql-native-password=ON
+
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
+
     ports:
-      - "3307:3306"   # 3307 no Windows aponta para o 3306 do contentor; 3306 do Windows continua livre para o MySQL local
+      - "${DB_HOST_PORT}:${DB_PORT}"
+
     volumes:
       - db_data:/var/lib/mysql
+
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD} --silent"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 10s
 
   api:
     build: .
     restart: unless-stopped
+
     depends_on:
       db:
         condition: service_healthy
+
     ports:
-      - "3000:3000"
+      - "${HOST_PORT}:${PORT}"
+
     volumes:
-    - ./uploads:/app/uploads  
+      - ./uploads:/usr/src/app/uploads
+
     environment:
-      DATABASE_URL: mysql://${DB_USER}:${DB_PASSWORD}@db:3306/${DB_NAME}
+      DATABASE_URL: mysql://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/${DB_NAME}
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY}   # NOVO — chave AES-256-GCM para encriptar credenciais de infraestrutura
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+
       ADMIN_NOME: ${ADMIN_NOME}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       ADMIN_SENHA: ${ADMIN_SENHA}

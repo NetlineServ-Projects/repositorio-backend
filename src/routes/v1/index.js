@@ -1,4 +1,5 @@
 const express = require("express");
+
 const router = express.Router();
 
 const atividadeRoutes = require("./atividadeRoutes");
@@ -8,13 +9,22 @@ const documentoRoutes = require("./documentoRoutes");
 const sistemasRoutes = require("./sistemasRoutes");
 const sistemaInfraestruturaRoutes = require("./sistemaInfraestruturaRoutes");
 const usuarioRoutes = require("./usuarioRoutes");
+const healthRoutes = require("./healthRoutes");
 
 router.use("/atividades", atividadeRoutes);
+
 router.use("/auth", authRoutes);
+
 router.use("/categorias", categoriaRoutes);
+
 router.use("/documentos", documentoRoutes);
+
 router.use("/sistemas", sistemasRoutes);
+
 router.use("/sistemas", sistemaInfraestruturaRoutes);
+
 router.use("/usuarios", usuarioRoutes);
+
+router.use("/health", healthRoutes);
 
 module.exports = router;
