@@ -52,6 +52,31 @@ module.exports = {
         CREDENCIAL_ATUALIZADA: "Credential successfully updated.",
         CREDENCIAL_NAO_ENCONTRADA: "Credential not found."
     },
+     PLATAFORMA: {
+        CREATED: "Platform created successfully.",
+        UPDATED: "Platform updated successfully.",
+        DELETED: "Platform deleted successfully.",
+        OBTIDA: "Platform retrieved successfully.",
+        LISTADAS: "Platforms retrieved successfully.",
+        NOT_FOUND: "Platform not found.",
+        NOME_JA_EXISTE: "A platform with this name already exists.",
+        TIPO_INCOMPATIVEL: "The type cannot be changed: the platform has linked records that are incompatible with the new type.",
+        TEM_DEPENDENCIAS: "The platform cannot be deleted: it still has domains, servers or systems linked to it.",
+    },
+    
+    SERVIDOR: {
+        CREATED: "Server created successfully.",
+        UPDATED: "Server updated successfully.",
+        DELETED: "Server deleted successfully.",
+        OBTIDO: "Server retrieved successfully.",
+        LISTADOS: "Servers retrieved successfully.",
+        NOT_FOUND: "Server not found.",
+        IP_JA_EXISTE: "A server with this IP already exists on this platform.",
+        PLATAFORMA_INVALIDA: "Servers can only be registered on Cloud/Database or Containerization platforms.",
+        PLATAFORMA_INATIVA: "The selected platform is inactive.",
+        TEM_DEPENDENCIAS: "The server cannot be deleted: it still has subdomains or systems linked to it.",
+        PASSWORD_OBTIDA: "Server password retrieved successfully.",
+    },
 
     VALIDATION: {
       REQUIRED_FIELDS: "Please fill in all required fields.",

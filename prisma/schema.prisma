@@ -152,6 +152,10 @@ model Subdominio {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
+
+  // O mesmo nome pode ter vários tipos (ex: "@" com MX, TXT e NS),
+  // mas não o mesmo tipo repetido
+  @@unique([dominioId, nome, tipoDns])
   @@unique([dominioId, nome])
   @@index([servidorId])
   @@map("subdominios")
@@ -298,6 +302,19 @@ enum TipoDns {
   A
   AAAA
   CNAME
+  MX
+  TXT
+  NS
+  SRV
+  CAA
+  PTR
+  SOA
+  DS
+  DNSKEY
+  RRSIG
+  TLSA
+  SSHFP
+  OUTRO
 }
 
 // RAM e disco

@@ -52,6 +52,32 @@ module.exports = {
         CREDENCIAL_ATUALIZADA: "Credencial atualizada com sucesso.",
         CREDENCIAL_NAO_ENCONTRADA: "Credencial não encontrada.",
     },
+     
+    PLATAFORMA: {
+        CREATED: "Plataforma criada com sucesso.",
+        UPDATED: "Plataforma atualizada com sucesso.",
+        DELETED: "Plataforma apagada com sucesso.",
+        OBTIDA: "Plataforma obtida com sucesso.",
+        LISTADAS: "Plataformas obtidas com sucesso.",
+        NOT_FOUND: "Plataforma não encontrada.",
+        NOME_JA_EXISTE: "Já existe uma plataforma com este nome.",
+        TIPO_INCOMPATIVEL: "Não é possível alterar o tipo: a plataforma tem registos associados incompatíveis com o novo tipo.",
+        TEM_DEPENDENCIAS: "Não é possível apagar a plataforma: ainda tem domínios, servidores ou sistemas associados.",
+    },
+
+    SERVIDOR: {
+        CREATED: "Servidor criado com sucesso.",
+        UPDATED: "Servidor atualizado com sucesso.",
+        DELETED: "Servidor apagado com sucesso.",
+        OBTIDO: "Servidor obtido com sucesso.",
+        LISTADOS: "Servidores obtidos com sucesso.",
+        NOT_FOUND: "Servidor não encontrado.",
+        IP_JA_EXISTE: "Já existe um servidor com este IP nesta plataforma.",
+        PLATAFORMA_INVALIDA: "Só é possível registar servidores em plataformas do tipo Cloud/Base de dados ou Containerização.",
+        PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
+        TEM_DEPENDENCIAS: "Não é possível apagar o servidor: ainda tem subdomínios ou sistemas associados.",
+        PASSWORD_OBTIDA: "Password do servidor obtida com sucesso.",
+    },
 
     VALIDATION: {
         REQUIRED_FIELDS: "Preencha todos os campos obrigatórios.",

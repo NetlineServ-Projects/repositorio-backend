@@ -84,5 +84,23 @@ function desencriptar(textoEncriptado) {
 
   return decriptado.toString("utf8");
 }
+/**
+ * Hash determinístico (HMAC-SHA256) de um IP, usado SÓ para garantir unicidade
+ * (@@unique([plataformaId, ipHash])), porque o IP encriptado muda a cada
+ * encriptação (IV aleatório). A subchave é derivada da ENCRYPTION_KEY, por isso
+ * não é preciso nenhuma variável de ambiente nova.
+ */
+function hashIp(ip) {
+  const subchave = crypto
+    .createHmac("sha256", obterChave())
+    .update("hash-ip-servidor")
+    .digest();
+
+  const normalizado = String(ip).trim().toLowerCase();
+
+  return crypto.createHmac("sha256", subchave).update(normalizado).digest("hex");
+}
+
+module.exports = { encriptar, desencriptar, hashIp };
 
 module.exports = { encriptar, desencriptar };
