@@ -17,7 +17,7 @@ model Usuario {
   departamento String   @default("")
   perfil       Perfil   @default(FUNCIONARIO)
   ativo        Boolean  @default(true)
-  fotografia   String?  // caminho/URL da foto de perfil (nullable — nem todos terão)
+  fotografia   String? // caminho/URL da foto de perfil (nullable — nem todos terão)
   dataCriacao  DateTime @default(now())
 
   temaEscuro        Boolean @default(false)
@@ -91,13 +91,123 @@ model Sistema {
   @@map("sistemas")
 }
 
+// ─────────────────────────────────────────────────────────────
+// ABA PLATAFORMAS
+// Hierarquia de visualização:
+//   Plataforma → Domínio → Subdomínio → Servidor → Sistema → Credenciais
+// ─────────────────────────────────────────────────────────────
+
+// O tipo define o que a plataforma pode conter (regras validadas na API):
+//   CLOUD_BASE_DADOS / CONTAINERIZACAO → podem ter Servidores
+//   GESTAO_DOMINIO                     → pode ter Domínios
+model Plataforma {
+  id        Int            @id @default(autoincrement())
+  nome      String         @unique @db.VarChar(255)
+  tipo      TipoPlataforma
+  urlPainel String?        @db.VarChar(255)
+  ativo     Boolean        @default(true)
+
+  dominios        Dominio[]
+  servidores      Servidor[]
+  // Sistemas ligados diretamente à plataforma, sem servidor (ex: Vercel)
+  infraestruturas SistemaInfraestrutura[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@map("plataformas")
+}
+
+// Pertence a uma plataforma do tipo GESTAO_DOMINIO
+model Dominio {
+  id            Int      @id @default(autoincrement())
+  nome          String   @unique @db.VarChar(255) // ex: empresa.co.mz
+  dataExpiracao DateTime
+
+  plataformaId Int
+  plataforma   Plataforma @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
+
+  subdominios Subdominio[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@index([plataformaId])
+  @@map("dominios")
+}
+
+// A / AAAA → servidorId preenchido | CNAME → destino preenchido (validado na API)
+model Subdominio {
+  id      Int     @id @default(autoincrement())
+  nome    String  @db.VarChar(255) // só o prefixo, ex: "app"
+  tipoDns TipoDns @default(A)
+  destino String? @db.VarChar(255)
+
+  dominioId Int
+  dominio   Dominio @relation(fields: [dominioId], references: [id], onDelete: Cascade)
+
+  servidorId Int?
+  servidor   Servidor? @relation(fields: [servidorId], references: [id], onDelete: SetNull)
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([dominioId, nome])
+  @@index([servidorId])
+  @@map("subdominios")
+}
+
+// Máquina real. Plataformas sem máquina acessível (ex: Vercel) NÃO têm Servidor.
+model Servidor {
+  id                  Int                  @id @default(autoincrement())
+  nome                String               @db.VarChar(255)
+  hostname            String               @db.VarChar(255)
+  ipCifrado           String               @db.Text // AES-256-GCM
+  ipHash              String               @db.VarChar(64) // HMAC-SHA256, só para unicidade
+  usernameSsh         String               @db.VarChar(255)
+  passwordCifrada     String               @db.Text // AES-256-GCM; nunca devolvida na árvore
+  numeroCpu           Int
+  memoriaRam          Int
+  memoriaRamUnidade   UnidadeArmazenamento @default(GB)
+  disco               Int
+  discoUnidade        UnidadeArmazenamento @default(GB)
+  larguraBanda        Int
+  larguraBandaUnidade UnidadeVelocidade    @default(MBPS)
+  sistemaOperativo    String               @db.VarChar(100)
+  versaoSo            String?              @db.VarChar(50)
+  cloud               String?              @db.VarChar(255)
+  regiao              String?              @db.VarChar(100)
+
+  plataformaId Int
+  plataforma   Plataforma @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
+
+  subdominios     Subdominio[]
+  infraestruturas SistemaInfraestrutura[]
+
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([plataformaId, ipHash])
+  @@index([plataformaId])
+  @@map("servidores")
+}
+
 model SistemaInfraestrutura {
-  id        Int          @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   sistemaId Int
-  sistema   Sistema      @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
+  sistema   Sistema @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
 
   ambiente TipoAmbiente @default(PRODUCAO)
 
+  // Tem de ter servidorId OU plataformaId, nunca nenhum e nunca os dois (validado na API)
+  servidorId   Int?
+  servidor     Servidor?   @relation(fields: [servidorId], references: [id], onDelete: SetNull)
+  plataformaId Int?
+  plataforma   Plataforma? @relation(fields: [plataformaId], references: [id], onDelete: SetNull)
+
+  url String? @db.VarChar(255) // endereço do sistema neste ambiente
+
+  // DEPRECADOS: manter até migrar os dados; remover numa migração posterior
   ipServidor    String? @db.Text // valor encriptado (AES-256-GCM)
   cloudProvedor String? @db.Text // valor encriptado (AES-256-GCM)
 
@@ -108,6 +218,8 @@ model SistemaInfraestrutura {
 
   // Um sistema só pode ter UMA infraestrutura por tipo de ambiente
   @@unique([sistemaId, ambiente])
+  @@index([servidorId])
+  @@index([plataformaId])
 }
 
 model CredencialSistema {
@@ -174,4 +286,29 @@ enum TipoCredencial {
   CREDENCIAIS_SMTP
   BACKUP_ACESSO
   OUTRO
+}
+
+enum TipoPlataforma {
+  CLOUD_BASE_DADOS
+  CONTAINERIZACAO
+  GESTAO_DOMINIO
+}
+
+enum TipoDns {
+  A
+  AAAA
+  CNAME
+}
+
+// RAM e disco
+enum UnidadeArmazenamento {
+  MB
+  GB
+  TB
+}
+
+// Largura de banda (velocidade da ligação, em bits por segundo)
+enum UnidadeVelocidade {
+  MBPS
+  GBPS
 }
