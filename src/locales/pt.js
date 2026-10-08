@@ -79,6 +79,19 @@ module.exports = {
         PASSWORD_OBTIDA: "Password do servidor obtida com sucesso.",
     },
 
+    DOMINIO: {
+        CREATED: "Domínio criado com sucesso.",
+        UPDATED: "Domínio atualizado com sucesso.",
+        DELETED: "Domínio apagado com sucesso.",
+        OBTIDO: "Domínio obtido com sucesso.",
+        LISTADOS: "Domínios obtidos com sucesso.",
+        NOT_FOUND: "Domínio não encontrado.",
+        NOME_JA_EXISTE: "Já existe um domínio com este nome.",
+        PLATAFORMA_INVALIDA: "Só é possível registar domínios em plataformas do tipo Gestão de domínio.",
+        PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
+        TEM_DEPENDENCIAS: "Não é possível apagar o domínio: ainda tem subdomínios associados.",
+    },
+
     VALIDATION: {
         REQUIRED_FIELDS: "Preencha todos os campos obrigatórios.",
         INVALID_DATA: "Os dados fornecidos são inválidos.",

@@ -102,5 +102,3 @@ function hashIp(ip) {
 }
 
 module.exports = { encriptar, desencriptar, hashIp };
-
-module.exports = { encriptar, desencriptar };

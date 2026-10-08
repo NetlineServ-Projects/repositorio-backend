@@ -77,6 +77,19 @@ module.exports = {
         TEM_DEPENDENCIAS: "The server cannot be deleted: it still has subdomains or systems linked to it.",
         PASSWORD_OBTIDA: "Server password retrieved successfully.",
     },
+     
+    DOMINIO: {
+        CREATED: "Domain created successfully.",
+        UPDATED: "Domain updated successfully.",
+        DELETED: "Domain deleted successfully.",
+        OBTIDO: "Domain retrieved successfully.",
+        LISTADOS: "Domains retrieved successfully.",
+        NOT_FOUND: "Domain not found.",
+        NOME_JA_EXISTE: "A domain with this name already exists.",
+        PLATAFORMA_INVALIDA: "Domains can only be registered on Domain management platforms.",
+        PLATAFORMA_INATIVA: "The selected platform is inactive.",
+        TEM_DEPENDENCIAS: "The domain cannot be deleted: it still has subdomains linked to it.",
+    }, 
 
     VALIDATION: {
       REQUIRED_FIELDS: "Please fill in all required fields.",

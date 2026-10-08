@@ -141,7 +141,7 @@ model Subdominio {
   id      Int     @id @default(autoincrement())
   nome    String  @db.VarChar(255) // só o prefixo, ex: "app"
   tipoDns TipoDns @default(A)
-  destino String? @db.VarChar(255)
+  destino String? @db.Text
 
   dominioId Int
   dominio   Dominio @relation(fields: [dominioId], references: [id], onDelete: Cascade)
@@ -156,7 +156,7 @@ model Subdominio {
   // O mesmo nome pode ter vários tipos (ex: "@" com MX, TXT e NS),
   // mas não o mesmo tipo repetido
   @@unique([dominioId, nome, tipoDns])
-  @@unique([dominioId, nome])
+  @@index([dominioId])
   @@index([servidorId])
   @@map("subdominios")
 }
