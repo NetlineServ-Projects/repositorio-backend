@@ -16,6 +16,26 @@ exports.listar = async (req, res, next) => {
     }
 };
 
+exports.obterArvore = async (req, res, next) => {
+    try {
+        const arvore = await service.obterArvorePlataformas();
+
+        return response.success(res, MSG.PLATAFORMA.ARVORE_OBTIDA, arvore, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};
+
+exports.obterArvorePlataforma = async (req, res, next) => {
+    try {
+        const arvore = await service.obterArvorePlataforma(req.params.id);
+
+        return response.success(res, MSG.PLATAFORMA.ARVORE_OBTIDA, arvore, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};
+
 exports.obter = async (req, res, next) => {
     try {
         const plataforma = await service.obterPlataforma(req.params.id);

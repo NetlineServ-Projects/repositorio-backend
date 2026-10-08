@@ -50,7 +50,11 @@ module.exports = {
         INFRAESTRUTURA_OBTIDA: "Infrastructure obtained successfully.",
         INFRAESTRUTURA_SEM_DADOS: "This system does not have infrastructure data registered yet.",
         CREDENCIAL_ATUALIZADA: "Credential successfully updated.",
-        CREDENCIAL_NAO_ENCONTRADA: "Credential not found."
+        CREDENCIAL_NAO_ENCONTRADA: "Credential not found.",
+        INFRA_NAO_ENCONTRADA: "This environment does not have infrastructure registered yet. Please create it first.",
+        INFRA_SERVIDOR_OU_PLATAFORMA: "Provide a server (servidorId) OR a platform (plataformaId) — never both and never neither.",
+        INFRA_NAO_AMBOS: "A server and a platform cannot be associated at the same time. Choose only one.",
+        INFRA_PLATAFORMA_INVALIDA: "Domain management platforms cannot host systems directly.",
     },
      PLATAFORMA: {
         CREATED: "Platform created successfully.",
@@ -58,6 +62,7 @@ module.exports = {
         DELETED: "Platform deleted successfully.",
         OBTIDA: "Platform retrieved successfully.",
         LISTADAS: "Platforms retrieved successfully.",
+        ARVORE_OBTIDA: "Platform tree retrieved successfully.",
         NOT_FOUND: "Platform not found.",
         NOME_JA_EXISTE: "A platform with this name already exists.",
         TIPO_INCOMPATIVEL: "The type cannot be changed: the platform has linked records that are incompatible with the new type.",

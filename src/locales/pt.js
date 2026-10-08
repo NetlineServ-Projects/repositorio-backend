@@ -51,6 +51,10 @@ module.exports = {
         INFRAESTRUTURA_SEM_DADOS: "Este sistema ainda não tem infraestrutura registada.",
         CREDENCIAL_ATUALIZADA: "Credencial atualizada com sucesso.",
         CREDENCIAL_NAO_ENCONTRADA: "Credencial não encontrada.",
+        INFRA_NAO_ENCONTRADA: "Este ambiente ainda não tem infraestrutura registada. Crie-a primeiro.",
+        INFRA_SERVIDOR_OU_PLATAFORMA: "Indique um servidor (servidorId) OU uma plataforma (plataformaId) — nunca os dois nem nenhum.",
+        INFRA_NAO_AMBOS: "Não é possível associar um servidor e uma plataforma em simultâneo. Escolha apenas um.",
+        INFRA_PLATAFORMA_INVALIDA: "Plataformas do tipo Gestão de domínio não podem receber sistemas directamente.",
     },
      
     PLATAFORMA: {
@@ -59,6 +63,7 @@ module.exports = {
         DELETED: "Plataforma apagada com sucesso.",
         OBTIDA: "Plataforma obtida com sucesso.",
         LISTADAS: "Plataformas obtidas com sucesso.",
+        ARVORE_OBTIDA: "Árvore de plataformas obtida com sucesso.",
         NOT_FOUND: "Plataforma não encontrada.",
         NOME_JA_EXISTE: "Já existe uma plataforma com este nome.",
         TIPO_INCOMPATIVEL: "Não é possível alterar o tipo: a plataforma tem registos associados incompatíveis com o novo tipo.",

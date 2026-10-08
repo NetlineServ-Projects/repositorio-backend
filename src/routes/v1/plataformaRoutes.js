@@ -21,6 +21,18 @@ const escrita = [authMiddleware, authorize(ROLES.ADMIN)];
 
 router.get("/", ...leitura, plataformaController.listar);
 
+// Árvore completa de todas as plataformas
+// NOTA: Tem de vir antes de "/:id" para não ser capturada como parâmetro
+router.get("/arvore", ...leitura, plataformaController.obterArvore);
+
+// Árvore de uma plataforma específica
+router.get(
+  "/:id/arvore",
+  ...leitura,
+  validate(plataformaIdParamsSchema, "params"),
+  plataformaController.obterArvorePlataforma
+);
+
 router.get(
   "/:id",
   ...leitura,
