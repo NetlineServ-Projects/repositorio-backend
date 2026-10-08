@@ -91,6 +91,23 @@ module.exports = {
         TEM_DEPENDENCIAS: "The domain cannot be deleted: it still has subdomains linked to it.",
     }, 
 
+       
+    SUBDOMINIO: {
+        CREATED: "Subdomain created successfully.",
+        UPDATED: "Subdomain updated successfully.",
+        DELETED: "Subdomain deleted successfully.",
+        OBTIDO: "Subdomain retrieved successfully.",
+        LISTADOS: "Subdomains retrieved successfully.",
+        NOT_FOUND: "Subdomain not found.",
+        JA_EXISTE: "A record of this type with this name already exists in this domain.",
+        SERVIDOR_OBRIGATORIO: "A and AAAA records require a destination server.",
+        DESTINO_NAO_PERMITIDO: "A and AAAA records point to a server and must not have a destination value.",
+        DESTINO_OBRIGATORIO: "This record type requires the destination field.",
+        SERVIDOR_NAO_PERMITIDO: "Only A and AAAA records can point to a server.",
+        CNAME_INVALIDO: "The destination of a CNAME record must be a valid domain name.",
+        CNAME_CONFLITO: "A name with a CNAME record cannot have other records, and vice versa.",
+    },
+
     VALIDATION: {
       REQUIRED_FIELDS: "Please fill in all required fields.",
       INVALID_DATA: "The data provided is invalid.",

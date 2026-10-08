@@ -5,9 +5,7 @@ const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const ROLES = require("../constants/roles");
 const AppError = require("../utils/AppError");
-const { formatarUsuario } = require("../utils/fileHelper");
-const fs = require("fs/promises");
-const path = require("path");
+const { formatarUsuario, apagarFicheiroAntigoPerfil } = require("../utils/fileHelper");
 
 
 const CAMPOS_PERMITIDOS_ATUALIZACAO = ["nome", "email", "senha", "numero", "cargo", "departamento", "perfil", "ativo"];
@@ -149,8 +147,7 @@ exports.atualizarFotografia = async (userId, urlFotografia) => {
     });
 
     if (usuarioExistente.fotografia) {
-        const caminhoAntigo = path.join("uploads/avatars", path.basename(usuarioExistente.fotografia));
-        fs.unlink(caminhoAntigo).catch(() => {});
+        apagarFicheiroAntigoPerfil(usuarioExistente.fotografia);
     }
 
     return formatarUsuario(usuarioAtualizado);

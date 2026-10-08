@@ -4,14 +4,9 @@ const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const atividadeService = require("./atividadeService");
 
-const TIPO_GESTAO_DOMINIO = "GESTAO_DOMINIO";
+const { rotuloTipoPlataforma } = require("../utils/fileHelper");
 
-// Rótulos legíveis do tipo para o registo de atividades
-const ROTULO_TIPO = {
-  CLOUD_BASE_DADOS: "Cloud/Base de dados",
-  CONTAINERIZACAO: "Containerização",
-  GESTAO_DOMINIO: "Gestão de domínio",
-};
+const TIPO_GESTAO_DOMINIO = "GESTAO_DOMINIO";
 
 // Nunca devolve nada sensível: a plataforma só tem dados de identificação
 const SELECT_PLATAFORMA = {
@@ -112,7 +107,7 @@ async function criarPlataforma(dados, usuarioId) {
 
       await atividadeService.registrar(tx, {
         usuarioId,
-        acao: `Criou a plataforma "${criada.nome}" (${ROTULO_TIPO[criada.tipo]})`,
+        acao: `Criou a plataforma "${criada.nome}" (${rotuloTipoPlataforma(criada.tipo)})`,
       });
 
       return formatar(criada);
@@ -166,7 +161,7 @@ async function apagarPlataforma(id, usuarioId) {
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Apagou a plataforma "${atual.nome}" (${ROTULO_TIPO[atual.tipo]})`,
+      acao: `Apagou a plataforma "${atual.nome}" (${rotuloTipoPlataforma(atual.tipo)})`,
     });
   });
 }

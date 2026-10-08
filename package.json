@@ -1,14 +1,16 @@
 {
-  "name": "api-prisma",
+  "name": "repositorio-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
     "migrate": "prisma migrate deploy",
     "seed": "prisma db seed",
-    "start:prod": "npm run migrate && npm run seed && npm run start"
-  
+    "start:prod": "npm run migrate && npm run start",
+    "test": "echo \"Sem testes configurados ainda.\" && exit 0"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -16,7 +18,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "API de gestão de repositório interno — Netline",
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
@@ -27,11 +29,12 @@
     "multer": "^2.2.0",
     "mysql2": "^3.22.5",
     "node-cache": "^5.1.2",
-    "prisma": "^6.19.3",
     "zod": "^4.4.3"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "devDependencies": {
-    "@types/multer": "^2.2.0"
+    "@types/multer": "^2.2.0",
+    "prisma": "^6.19.3"
   }
 }
+

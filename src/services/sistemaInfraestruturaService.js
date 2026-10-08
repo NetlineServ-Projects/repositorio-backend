@@ -5,12 +5,7 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const { encriptar, desencriptar } = require("../utils/crypto");
 const atividadeService = require("./atividadeService");
 
-// Rótulos legíveis do ambiente para o registo de atividades
-const ROTULO_AMBIENTE = {
-  PRODUCAO: "Produção",
-  TESTES: "Testes",
-  DESENVOLVIMENTO: "Desenvolvimento",
-};
+const { rotuloAmbiente } = require("../utils/fileHelper");
 
 /**
  * Confirma que o sistema existe e devolve o seu nome (usado nas mensagens de Atividade).
@@ -117,7 +112,7 @@ async function salvarInfraestrutura(sistemaId, ambiente, { ipServidor, cloudProv
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Atualizou dados de infraestrutura (${ROTULO_AMBIENTE[ambiente]}) do sistema "${sistema.nome}"`,
+      acao: `Atualizou dados de infraestrutura (${rotuloAmbiente(ambiente)}) do sistema "${sistema.nome}"`,
       sistemaId,
     });
 
@@ -158,7 +153,7 @@ async function obterInfraestrutura(sistemaId, ambiente, usuarioId) {
 
   await atividadeService.registrar(prisma, {
     usuarioId,
-    acao: `Visualizou infraestrutura (${ROTULO_AMBIENTE[ambiente]}) do sistema "${sistema.nome}"`,
+    acao: `Visualizou infraestrutura (${rotuloAmbiente(ambiente)}) do sistema "${sistema.nome}"`,
     sistemaId,
   });
 
@@ -188,7 +183,7 @@ async function adicionarCredencial(sistemaId, ambiente, { tipo, label, valor }, 
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Adicionou credencial "${label}" (${tipo}) ao ambiente ${ROTULO_AMBIENTE[ambiente]} do sistema "${sistema.nome}"`,
+      acao: `Adicionou credencial "${label}" (${tipo}) ao ambiente ${rotuloAmbiente(ambiente)} do sistema "${sistema.nome}"`,
       sistemaId,
     });
 
@@ -217,7 +212,7 @@ async function atualizarCredencial(sistemaId, ambiente, credencialId, { tipo, la
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Atualizou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${ROTULO_AMBIENTE[ambiente]} do sistema "${sistema.nome}"`,
+      acao: `Atualizou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${rotuloAmbiente(ambiente)} do sistema "${sistema.nome}"`,
       sistemaId: sistema.id,
     });
 
@@ -234,7 +229,7 @@ async function apagarCredencial(sistemaId, ambiente, credencialId, usuarioId) {
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Apagou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${ROTULO_AMBIENTE[ambiente]} do sistema "${sistema.nome}"`,
+      acao: `Apagou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${rotuloAmbiente(ambiente)} do sistema "${sistema.nome}"`,
       sistemaId: sistema.id,
     });
   });

@@ -2,6 +2,9 @@ const usuarioService = require("../services/usuarioService");
 const HTTP = require("../utils/httpsStatus");
 const MSG = require("../utils/messages");
 const response = require("../utils/response");
+const { construirUrlFotografia } = require("../utils/fileHelper");
+
+// O id chega aqui já validado pelo middleware validate() nos routes que o exigem.
 
 exports.criarUsuario = async (req, res, next) => {
     try {
@@ -34,13 +37,8 @@ exports.buscarUsuarioPorId = async (req, res, next) => {
 exports.atualizarUsuario = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const dadosAtualizacao = req.body;
-
-        if (!dadosAtualizacao || Object.keys(dadosAtualizacao).length === 0) {
-            return response.error(res, MSG.VALIDATION.INVALID_DATA, HTTP.BAD_REQUEST);
-        }
-
-        const usuarioAtualizado = await usuarioService.atualizarUsuario(id, dadosAtualizacao);
+        // A validação de corpo vazio é feita pelo schema Zod no validator.
+        const usuarioAtualizado = await usuarioService.atualizarUsuario(id, req.body);
         return response.success(res, MSG.USER.UPDATED, usuarioAtualizado, HTTP.OK);
     } catch (error) {
         next(error);
@@ -56,6 +54,7 @@ exports.eliminarUsuario = async (req, res, next) => {
         next(error);
     }
 };
+
 exports.atualizarPreferencias = async (req, res, next) => {
     try {
         const userId = req.user.id;
@@ -65,13 +64,15 @@ exports.atualizarPreferencias = async (req, res, next) => {
         next(error);
     }
 };
+
 exports.atualizarFotografia = async (req, res, next) => {
     try {
         if (!req.file) {
             return response.error(res, MSG.VALIDATION.NO_FILE_UPLOADED, HTTP.BAD_REQUEST);
         }
         const userId = req.user.id;
-        const urlFotografia = `/uploads/avatars/${req.file.filename}`;
+        // Construção da URL centralizada no fileHelper
+        const urlFotografia = construirUrlFotografia(req.file.filename);
         const usuarioAtualizado = await usuarioService.atualizarFotografia(userId, urlFotografia);
         return response.success(res, MSG.USER.UPDATED, usuarioAtualizado, HTTP.OK);
     } catch (error) {

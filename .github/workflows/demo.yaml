@@ -148,9 +148,21 @@ jobs:
 
             echo "Waiting for database to be healthy..."
 
-            sleep 10
-
-            sudo docker compose ps
+            # Espera até 60 segundos pelo healthcheck do docker compose
+            for i in $(seq 1 12); do
+              STATUS=$(sudo docker compose ps --format json ${{ env.DB_SERVICE }} 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('Health',''))" 2>/dev/null || echo "")
+              if [ "$STATUS" = "healthy" ]; then
+                echo "Database is healthy."
+                break
+              fi
+              echo "  Attempt $i/12 — waiting 5s..."
+              sleep 5
+              if [ "$i" = "12" ]; then
+                echo "ERROR: Database did not become healthy in time."
+                sudo docker compose ps
+                exit 1
+              fi
+            done
 
           EOF
 

@@ -92,6 +92,22 @@ module.exports = {
         TEM_DEPENDENCIAS: "Não é possível apagar o domínio: ainda tem subdomínios associados.",
     },
 
+    SUBDOMINIO: {
+        CREATED: "Subdomínio criado com sucesso.",
+        UPDATED: "Subdomínio atualizado com sucesso.",
+        DELETED: "Subdomínio apagado com sucesso.",
+        OBTIDO: "Subdomínio obtido com sucesso.",
+        LISTADOS: "Subdomínios obtidos com sucesso.",
+        NOT_FOUND: "Subdomínio não encontrado.",
+        JA_EXISTE: "Já existe um registo deste tipo com este nome neste domínio.",
+        SERVIDOR_OBRIGATORIO: "Os registos A e AAAA exigem um servidor de destino.",
+        DESTINO_NAO_PERMITIDO: "Os registos A e AAAA apontam para um servidor e não devem ter destino.",
+        DESTINO_OBRIGATORIO: "Este tipo de registo exige o campo destino.",
+        SERVIDOR_NAO_PERMITIDO: "Só os registos A e AAAA podem apontar para um servidor.",
+        CNAME_INVALIDO: "O destino de um registo CNAME deve ser um nome de domínio válido.",
+        CNAME_CONFLITO: "Um nome com registo CNAME não pode ter outros registos, e vice-versa.",
+    },
+
     VALIDATION: {
         REQUIRED_FIELDS: "Preencha todos os campos obrigatórios.",
         INVALID_DATA: "Os dados fornecidos são inválidos.",

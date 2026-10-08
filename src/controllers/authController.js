@@ -52,7 +52,7 @@ exports.alterarSenha = async (req, res, next) => {
 // =======================================
 exports.atualizarPerfil = async (req, res, next) => {
     try {
-        const targetUserId = req.params.id || req.user.id;
+        const targetUserId = req.params.id ?? req.user.id;
         const usuarioAtualizado = await usuarioService.atualizarUsuario(targetUserId, req.body);
         
         return response.success(res, MSG.USER.UPDATED, usuarioAtualizado, HTTP.OK);
