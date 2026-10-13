@@ -3,11 +3,28 @@ const AppError = require("../utils/AppError");
 const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const atividadeService = require("./atividadeService");
-const { desencriptar } = require("../utils/crypto");
+const { encriptar, desencriptar } = require("../utils/crypto");
 const { rotuloTipoPlataforma } = require("../utils/fileHelper");
 
 const TIPO_GESTAO_DOMINIO = "GESTAO_DOMINIO";
+const TIPO_CONTAINERIZACAO = "CONTAINERIZACAO";
 const MILISSEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+const CAMPOS_REGISTRY = [
+  "fornecedorContainer",
+  "registryUrl",
+  "namespace",
+  "registryUtilizador",
+  "registryToken",
+];
+
+// Usado ao mudar o tipo de uma plataforma de containerização para outro
+const LIMPAR_REGISTRY = {
+  fornecedorContainer: null,
+  registryUrl: null,
+  namespace: null,
+  registryUtilizador: null,
+  registryTokenEnc: null,
+};
 
 // Nunca devolve nada sensível: a plataforma só tem dados de identificação
 const SELECT_PLATAFORMA = {
@@ -18,7 +35,12 @@ const SELECT_PLATAFORMA = {
   ativo: true,
   criadoEm: true,
   atualizadoEm: true,
-  _count: { select: { dominios: true, servidores: true, infraestruturas: true } },
+  fornecedorContainer: true,
+  registryUrl: true,
+  namespace: true,
+  registryUtilizador: true,
+  registryTokenEnc: true,
+  _count: { select: { dominios: true, servidores: true, infraestruturas: true, imagens: true } },
 };
 
 // ─── ESTRUTURA COMPLETA DA ÁRVORE ─────────────────────────────────────────────
@@ -197,6 +219,18 @@ const SELECT_ARVORE = {
     },
     orderBy: { ambiente: "asc" },
   },
+  // 4. Imagens (se for CONTAINERIZACAO)
+  imagens: {
+    select: {
+      id: true,
+      nome: true,
+      tag: true,
+      visibilidade: true,
+      origem: true,
+      ativo: true,
+    },
+    orderBy: [{ nome: "asc" }, { tag: "asc" }],
+  },
 };
 
 // ─── HELPERS DE FORMATAÇÃO DA ÁRVORE ──────────────────────────────────────────
@@ -236,7 +270,7 @@ function formatarServidorArvore(servidor) {
 }
 
 function formatarArvore(plataforma) {
-  const { dominios = [], servidores = [], infraestruturas = [], ...resto } = plataforma;
+  const { dominios = [], servidores = [], infraestruturas = [], imagens = [], ...resto } = plataforma;
 
   if (plataforma.tipo === TIPO_GESTAO_DOMINIO) {
     return {
@@ -276,17 +310,18 @@ function formatarArvore(plataforma) {
 }
 
 function formatar(plataforma) {
-  const { _count, ...resto } = plataforma;
+  const { _count, registryTokenEnc, ...resto } = plataforma;
   return {
     ...resto,
+    temTokenRegistry: Boolean(registryTokenEnc),
     totais: {
       dominios: _count?.dominios ?? 0,
       servidores: _count?.servidores ?? 0,
       sistemas: _count?.infraestruturas ?? 0,
+      imagens: _count?.imagens ?? 0,
     },
   };
 }
-
 async function obterPlataformaOuFalhar(id) {
   const plataforma = await prisma.plataforma.findUnique({
     where: { id },
@@ -325,11 +360,11 @@ function tratarNomeDuplicado(erro) {
  * registos num tipo que não os admite.
  */
 function verificarMudancaDeTipo(atual, novoTipo) {
-  const { dominios, servidores, infraestruturas } = atual._count;
+  const { dominios, servidores, infraestruturas, imagens } = atual._count;
 
   const incompativel =
     novoTipo === TIPO_GESTAO_DOMINIO
-      ? servidores > 0 || infraestruturas > 0
+      ? servidores > 0 || infraestruturas > 0 || imagens > 0
       : dominios > 0;
 
   if (incompativel) {
@@ -378,13 +413,35 @@ async function obterArvorePlataforma(id) {
   return formatarArvore(plataforma);
 }
 
+function prepararDadosRegistry(dados, tipoDestino) {
+  const { registryToken, ...data } = dados;
+
+  if (tipoDestino !== TIPO_CONTAINERIZACAO) {
+    const enviouCampoRegistry = CAMPOS_REGISTRY.some(
+      (campo) => dados[campo] !== undefined && dados[campo] !== null
+    );
+    if (enviouCampoRegistry) {
+      throw new AppError(MSG.PLATAFORMA.CAMPOS_REGISTRY_INVALIDOS, HTTP_STATUS.CONFLICT);
+    }
+    return data;
+  }
+
+  if (registryToken !== undefined) {
+    data.registryTokenEnc = registryToken === null ? null : encriptar(registryToken);
+  }
+
+  return data;
+}
+
 async function criarPlataforma(dados, usuarioId) {
   await garantirNomeLivre(dados.nome);
+
+  const data = prepararDadosRegistry(dados, dados.tipo);
 
   try {
     return await prisma.$transaction(async (tx) => {
       const criada = await tx.plataforma.create({
-        data: dados, // já validado e limpo pelo Zod
+        data, // já validado e limpo pelo Zod
         select: SELECT_PLATAFORMA,
       });
 
@@ -403,6 +460,13 @@ async function criarPlataforma(dados, usuarioId) {
 async function atualizarPlataforma(id, dados, usuarioId) {
   const atual = await obterPlataformaOuFalhar(id);
 
+  const tipoDestino = dados.tipo ?? atual.tipo;
+  const data = prepararDadosRegistry(dados, tipoDestino);
+
+  if (tipoDestino !== TIPO_CONTAINERIZACAO && atual.tipo === TIPO_CONTAINERIZACAO) {
+    Object.assign(data, LIMPAR_REGISTRY);
+  }
+
   if (dados.nome !== undefined) {
     await garantirNomeLivre(dados.nome, id);
   }
@@ -415,7 +479,7 @@ async function atualizarPlataforma(id, dados, usuarioId) {
     return await prisma.$transaction(async (tx) => {
       const atualizada = await tx.plataforma.update({
         where: { id },
-        data: dados,
+        data: data,
         select: SELECT_PLATAFORMA,
       });
 
@@ -433,9 +497,9 @@ async function atualizarPlataforma(id, dados, usuarioId) {
 
 async function apagarPlataforma(id, usuarioId) {
   const atual = await obterPlataformaOuFalhar(id);
-  const { dominios, servidores, infraestruturas } = atual._count;
+  const { dominios, servidores, infraestruturas, imagens } = atual._count;
 
-  if (dominios + servidores + infraestruturas > 0) {
+  if (dominios + servidores + infraestruturas + imagens > 0) {
     throw new AppError(MSG.PLATAFORMA.TEM_DEPENDENCIAS, HTTP_STATUS.CONFLICT);
   }
 
@@ -449,6 +513,38 @@ async function apagarPlataforma(id, usuarioId) {
   });
 }
 
+async function revelarTokenRegistry(id, usuarioId) {
+  const plataforma = await prisma.plataforma.findUnique({
+    where: { id },
+    select: { id: true, nome: true, registryTokenEnc: true },
+  });
+
+  if (!plataforma) {
+    throw new AppError(MSG.PLATAFORMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+  }
+
+  if (!plataforma.registryTokenEnc) {
+    throw new AppError(MSG.PLATAFORMA.TOKEN_NAO_DEFINIDO, HTTP_STATUS.NOT_FOUND);
+  }
+
+  let token;
+  try {
+    token = desencriptar(plataforma.registryTokenEnc);
+  } catch (_erro) {
+    throw new AppError(
+      "Não foi possível desencriptar o token do registry. Verifique a chave de encriptação.",
+      HTTP_STATUS.INTERNAL_SERVER_ERROR
+    );
+  }
+
+  await atividadeService.registrar(prisma, {
+    usuarioId,
+    acao: `Visualizou o token do registry da plataforma "${plataforma.nome}"`,
+  });
+
+  return { token };
+}
+
 module.exports = {
   listarPlataformas,
   obterPlataforma,
@@ -457,4 +553,5 @@ module.exports = {
   criarPlataforma,
   atualizarPlataforma,
   apagarPlataforma,
+  revelarTokenRegistry
 };

@@ -6,6 +6,7 @@ const authMiddleware = require("../../middlewares/authMiddleware");
 const authorize = require("../../middlewares/roleMiddleware");
 const validate = require("../../validators/validate");
 const ROLES = require("../../constants/roles");
+const exigirReautenticacao = require("../../middlewares/exigirReautenticacao");
 
 const {
   criarPlataformaSchema,
@@ -14,10 +15,12 @@ const {
 } = require("../../validators/plataformaValidator");
 
 // Leitura: qualquer utilizador autenticado (ADMIN e FUNCIONARIO).
-// Escrita: exclusivo ADMIN. Não há reautenticação: a plataforma não guarda
-// dados sensíveis (isso fica para o Servidor).
+// Escrita: exclusivo ADMIN.
+// Revelar o token do registry: exige reautenticação recente (token elevado, 3 min),
+// tal como a password do servidor.
 const leitura = [authMiddleware];
 const escrita = [authMiddleware, authorize(ROLES.ADMIN)];
+const leituraProtegida = [authMiddleware, exigirReautenticacao];
 
 router.get("/", ...leitura, plataformaController.listar);
 
@@ -31,6 +34,13 @@ router.get(
   ...leitura,
   validate(plataformaIdParamsSchema, "params"),
   plataformaController.obterArvorePlataforma
+);
+
+router.get(
+  "/:id/token-registry",
+  ...leituraProtegida,
+  validate(plataformaIdParamsSchema, "params"),
+  plataformaController.revelarTokenRegistry
 );
 
 router.get(

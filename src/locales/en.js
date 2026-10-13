@@ -56,7 +56,7 @@ module.exports = {
         INFRA_NAO_AMBOS: "A server and a platform cannot be associated at the same time. Choose only one.",
         INFRA_PLATAFORMA_INVALIDA: "Domain management platforms cannot host systems directly.",
     },
-     PLATAFORMA: {
+    PLATAFORMA: {
         CREATED: "Platform created successfully.",
         UPDATED: "Platform updated successfully.",
         DELETED: "Platform deleted successfully.",
@@ -66,9 +66,12 @@ module.exports = {
         NOT_FOUND: "Platform not found.",
         NOME_JA_EXISTE: "A platform with this name already exists.",
         TIPO_INCOMPATIVEL: "The type cannot be changed: the platform has linked records that are incompatible with the new type.",
-        TEM_DEPENDENCIAS: "The platform cannot be deleted: it still has domains, servers or systems linked to it.",
+        TEM_DEPENDENCIAS: "The platform cannot be deleted: it still has domains, servers, images or systems linked to it.",
+        CAMPOS_REGISTRY_INVALIDOS: "Registry data can only be defined on Containerization platforms.",
+        TOKEN_OBTIDO: "Registry token retrieved successfully.",
+        TOKEN_NAO_DEFINIDO: "This platform does not have a registry token defined.",
     },
-    
+
     SERVIDOR: {
         CREATED: "Server created successfully.",
         UPDATED: "Server updated successfully.",
@@ -82,7 +85,19 @@ module.exports = {
         TEM_DEPENDENCIAS: "The server cannot be deleted: it still has subdomains or systems linked to it.",
         PASSWORD_OBTIDA: "Server password retrieved successfully.",
     },
-     
+
+    IMAGEM: {
+        CREATED: "Image registered successfully.",
+        UPDATED: "Image updated successfully.",
+        DELETED: "Image deleted successfully.",
+        OBTIDA: "Image retrieved successfully.",
+        LISTADAS: "Images retrieved successfully.",
+        NOT_FOUND: "Image not found.",
+        JA_EXISTE: "An image with this name and tag already exists on this platform.",
+        PLATAFORMA_INVALIDA: "Images can only be registered on Containerization platforms.",
+        PLATAFORMA_INATIVA: "The selected platform is inactive.",
+    },
+
     DOMINIO: {
         CREATED: "Domain created successfully.",
         UPDATED: "Domain updated successfully.",
@@ -94,9 +109,9 @@ module.exports = {
         PLATAFORMA_INVALIDA: "Domains can only be registered on Domain management platforms.",
         PLATAFORMA_INATIVA: "The selected platform is inactive.",
         TEM_DEPENDENCIAS: "The domain cannot be deleted: it still has subdomains linked to it.",
-    }, 
+    },
 
-       
+
     SUBDOMINIO: {
         CREATED: "Subdomain created successfully.",
         UPDATED: "Subdomain updated successfully.",
@@ -114,13 +129,13 @@ module.exports = {
     },
 
     VALIDATION: {
-      REQUIRED_FIELDS: "Please fill in all required fields.",
-      INVALID_DATA: "The data provided is invalid.",
-      INVALID_ID: "Invalid ID.",
-      CATEGORIA_REQUIRED: "Category is required.",
-      FILE_TOO_LARGE: "The file exceeds the maximum allowed size (50MB).",
-      INVALID_DOCUMENT_TYPE: "File type not allowed. Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG.",
-      NO_FILE_UPLOADED: "No file was uploaded."
+        REQUIRED_FIELDS: "Please fill in all required fields.",
+        INVALID_DATA: "The data provided is invalid.",
+        INVALID_ID: "Invalid ID.",
+        CATEGORIA_REQUIRED: "Category is required.",
+        FILE_TOO_LARGE: "The file exceeds the maximum allowed size (50MB).",
+        INVALID_DOCUMENT_TYPE: "File type not allowed. Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG.",
+        NO_FILE_UPLOADED: "No file was uploaded."
     },
 
     SERVER: {

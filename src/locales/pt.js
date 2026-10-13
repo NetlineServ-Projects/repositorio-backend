@@ -56,7 +56,7 @@ module.exports = {
         INFRA_NAO_AMBOS: "Não é possível associar um servidor e uma plataforma em simultâneo. Escolha apenas um.",
         INFRA_PLATAFORMA_INVALIDA: "Plataformas do tipo Gestão de domínio não podem receber sistemas directamente.",
     },
-     
+
     PLATAFORMA: {
         CREATED: "Plataforma criada com sucesso.",
         UPDATED: "Plataforma atualizada com sucesso.",
@@ -67,7 +67,10 @@ module.exports = {
         NOT_FOUND: "Plataforma não encontrada.",
         NOME_JA_EXISTE: "Já existe uma plataforma com este nome.",
         TIPO_INCOMPATIVEL: "Não é possível alterar o tipo: a plataforma tem registos associados incompatíveis com o novo tipo.",
-        TEM_DEPENDENCIAS: "Não é possível apagar a plataforma: ainda tem domínios, servidores ou sistemas associados.",
+        TEM_DEPENDENCIAS: "Não é possível apagar a plataforma: ainda tem domínios, servidores, imagens ou sistemas associados.",
+        CAMPOS_REGISTRY_INVALIDOS: "Os dados de registry só podem ser definidos em plataformas do tipo Containerização.",
+        TOKEN_OBTIDO: "Token do registry obtido com sucesso.",
+        TOKEN_NAO_DEFINIDO: "Esta plataforma não tem token de registry definido.",
     },
 
     SERVIDOR: {
@@ -82,6 +85,18 @@ module.exports = {
         PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
         TEM_DEPENDENCIAS: "Não é possível apagar o servidor: ainda tem subdomínios ou sistemas associados.",
         PASSWORD_OBTIDA: "Password do servidor obtida com sucesso.",
+    },
+
+    IMAGEM: {
+        CREATED: "Imagem registada com sucesso.",
+        UPDATED: "Imagem atualizada com sucesso.",
+        DELETED: "Imagem apagada com sucesso.",
+        OBTIDA: "Imagem obtida com sucesso.",
+        LISTADAS: "Imagens obtidas com sucesso.",
+        NOT_FOUND: "Imagem não encontrada.",
+        JA_EXISTE: "Já existe uma imagem com este nome e tag nesta plataforma.",
+        PLATAFORMA_INVALIDA: "Só é possível registar imagens em plataformas do tipo Containerização.",
+        PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
     },
 
     DOMINIO: {

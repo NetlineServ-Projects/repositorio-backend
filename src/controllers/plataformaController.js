@@ -75,3 +75,16 @@ exports.apagar = async (req, res, next) => {
         next(error);
     }
 };
+
+exports.revelarTokenRegistry = async (req, res, next) => {
+    try {
+        const resultado = await service.revelarTokenRegistry(req.params.id, req.user.id);
+
+        // Um segredo nunca deve ficar em cache do browser nem de proxies
+        res.set("Cache-Control", "no-store");
+
+        return response.success(res, MSG.PLATAFORMA.TOKEN_OBTIDO, resultado, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};
