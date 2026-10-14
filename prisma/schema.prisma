@@ -85,7 +85,7 @@ model Sistema {
   atividades                Atividade[]
   dataCriacao               DateTime      @default(now())
 
-  // Um sistema passa a ter várias infraestruturas — uma por ambiente
+
   infraestruturas SistemaInfraestrutura[]
 
   @@map("sistemas")
@@ -150,14 +150,16 @@ model Subdominio {
   destino String? @db.Text
 
   dominioId Int
-  dominio   Dominio @relation(fields: [dominioId], references: [id], onDelete: Cascade)
+  dominio   Dominio @relation(fields: [dominioId], references: [id], onDelete: Restrict)
 
   servidorId Int?
   servidor   Servidor? @relation(fields: [servidorId], references: [id], onDelete: SetNull)
 
+  sistemaInfraestruturaId Int                   @unique
+  sistemaInfraestrutura   SistemaInfraestrutura @relation(fields: [sistemaInfraestruturaId], references: [id], onDelete: Cascade)
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
-
 
   // O mesmo nome pode ter vários tipos (ex: "@" com MX, TXT e NS),
   // mas não o mesmo tipo repetido
@@ -187,6 +189,7 @@ model Servidor {
   versaoSo            String?              @db.VarChar(50)
   cloud               String?              @db.VarChar(255)
   regiao              String?              @db.VarChar(100)
+  estado EstadoServidor @default(INATIVO)
 
   plataformaId Int
   plataforma   Plataforma @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
@@ -227,8 +230,9 @@ model SistemaInfraestrutura {
   sistema   Sistema @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
 
   ambiente TipoAmbiente @default(PRODUCAO)
+  componente ComponenteSistema @default(BACKEND)
 
-  // Tem de ter servidorId OU plataformaId, nunca nenhum e nunca os dois (validado na API)
+  
   servidorId   Int?
   servidor     Servidor?   @relation(fields: [servidorId], references: [id], onDelete: SetNull)
   plataformaId Int?
@@ -236,17 +240,17 @@ model SistemaInfraestrutura {
 
   url String? @db.VarChar(255) // endereço do sistema neste ambiente
 
-  // DEPRECADOS: manter até migrar os dados; remover numa migração posterior
   ipServidor    String? @db.Text // valor encriptado (AES-256-GCM)
   cloudProvedor String? @db.Text // valor encriptado (AES-256-GCM)
 
   credenciais CredencialSistema[]
+  subdominio  Subdominio?
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
   // Um sistema só pode ter UMA infraestrutura por tipo de ambiente
-  @@unique([sistemaId, ambiente])
+  @@unique([sistemaId, ambiente, componente])
   @@index([servidorId])
   @@index([plataformaId])
 }
@@ -299,7 +303,11 @@ enum StatusSistema {
 enum TipoAmbiente {
   PRODUCAO
   TESTES
-  DESENVOLVIMENTO
+}
+
+enum ComponenteSistema {
+  FRONTEND
+  BACKEND
 }
 
 enum TipoCredencial {
@@ -376,4 +384,9 @@ enum UnidadeArmazenamento {
 enum UnidadeVelocidade {
   MBPS
   GBPS
+}
+
+enum EstadoServidor {
+  ATIVO
+  INATIVO
 }

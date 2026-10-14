@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `servidores` ADD COLUMN `estado` ENUM('ATIVO', 'INATIVO') NOT NULL DEFAULT 'INATIVO';

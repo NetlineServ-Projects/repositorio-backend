@@ -12,6 +12,7 @@ const SELECT_SISTEMA_LISTA = {
     id: true,
     nome: true,
     descricaoCurta: true,
+    descricaoLonga: true,
     status: true,
     dataInicio: true,
     dataEntrega: true,
