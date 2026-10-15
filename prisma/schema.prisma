@@ -17,7 +17,7 @@ model Usuario {
   departamento String   @default("")
   perfil       Perfil   @default(FUNCIONARIO)
   ativo        Boolean  @default(true)
-  fotografia   String? // caminho/URL da foto de perfil (nullable — nem todos terão)
+  fotografia   String? 
   dataCriacao  DateTime @default(now())
 
   temaEscuro        Boolean @default(false)
@@ -33,7 +33,7 @@ model Documento {
   titulo         String
   descricao      String?
   nomeArquivo    String
-  caminho        String // O caminho real ou URL no servidor (ex: "storage/uploads/xyz-123.pdf")
+  caminho        String 
   tipoArquivo    String
   tamanho        BigInt
   estado         EstadoDocumento @default(PENDENTE)
@@ -47,7 +47,7 @@ model Documento {
   categoriaId Int
   categoria   Categoria @relation(fields: [categoriaId], references: [id])
 
-  // Relação opcional com Sistema (um documento pode ou não pertencer a um sistema)
+ 
   sistemaId Int?
   sistema   Sistema? @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
 
@@ -90,28 +90,23 @@ model Sistema {
 
   @@map("sistemas")
 }
-
-// ─────────────────────────────────────────────────────────────
-// ABA PLATAFORMAS
-// Hierarquia de visualização:
-//   Plataforma → Domínio → Subdomínio → Servidor → Sistema → Credenciais
-// ─────────────────────────────────────────────────────────────
-
-// O tipo define o que a plataforma pode conter (regras validadas na API):
-//   CLOUD_BASE_DADOS / CONTAINERIZACAO → podem ter Servidores
-//   GESTAO_DOMINIO                     → pode ter Domínios
+    
 model Plataforma {
-  id        Int            @id @default(autoincrement())
-  nome      String         @unique @db.VarChar(255)
-  tipo      TipoPlataforma
-  urlPainel String?        @db.VarChar(255)
-  ativo     Boolean        @default(true)
-  fornecedorContainer FornecedorContainer?
-  registryUrl         String?              @db.Text
-  namespace           String?
-  registryUtilizador  String?
-  registryTokenEnc    String?              @db.Text
-  imagens             ImagemContainer[]
+  id         Int            @id @default(autoincrement())
+  nome       String         @unique @db.VarChar(255)
+  tipo       TipoPlataforma
+  fornecedor FornecedorPlataforma
+  logotipo   String?        @db.VarChar(255) 
+  urlPainel  String?        @db.VarChar(255)
+  ativo      Boolean        @default(true)
+
+  utilizador     String?
+  tokenCifrado   String? @db.Text // AES-256-GCM
+
+  // Só para CONTAINERIZACAO
+  registryUrl String? @db.Text
+  namespace   String?
+  imagens     ImagemContainer[]
 
   dominios        Dominio[]
   servidores      Servidor[]
@@ -124,7 +119,6 @@ model Plataforma {
   @@map("plataformas")
 }
 
-// Pertence a uma plataforma do tipo GESTAO_DOMINIO
 model Dominio {
   id            Int      @id @default(autoincrement())
   nome          String   @unique @db.VarChar(255) // ex: empresa.co.mz
@@ -132,9 +126,7 @@ model Dominio {
 
   plataformaId Int
   plataforma   Plataforma @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
-
   subdominios Subdominio[]
-
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -157,19 +149,17 @@ model Subdominio {
 
   sistemaInfraestruturaId Int                   @unique
   sistemaInfraestrutura   SistemaInfraestrutura @relation(fields: [sistemaInfraestruturaId], references: [id], onDelete: Cascade)
-
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  // O mesmo nome pode ter vários tipos (ex: "@" com MX, TXT e NS),
-  // mas não o mesmo tipo repetido
+  
   @@unique([dominioId, nome, tipoDns])
   @@index([dominioId])
   @@index([servidorId])
   @@map("subdominios")
 }
 
-// Máquina real. Plataformas sem máquina acessível (ex: Vercel) NÃO têm Servidor.
+
 model Servidor {
   id                  Int                  @id @default(autoincrement())
   nome                String               @db.VarChar(255)
@@ -350,7 +340,8 @@ enum TipoDns {
   OUTRO
 }
 
-enum FornecedorContainer {
+enum FornecedorPlataforma {
+  // Containerização
   DOCKER_HUB
   GITHUB_CONTAINER_REGISTRY
   AWS_ECR
@@ -360,6 +351,46 @@ enum FornecedorContainer {
   KUBERNETES
   DOCKER_SWARM
   PORTAINER
+
+  // Cloud / Base de Dados
+  AWS
+  MICROSOFT_AZURE
+  GOOGLE_CLOUD
+  ORACLE_CLOUD
+  DIGITALOCEAN
+  HETZNER_CLOUD
+  LINODE
+  VULTR
+  OVHCLOUD
+  CONTABO
+  VERCEL
+  NETLIFY
+  RAILWAY
+  RENDER
+  FLY_IO
+  HEROKU
+  SUPABASE
+  PLANETSCALE
+  MONGODB_ATLAS
+  NEON
+  AIVEN
+  FIREBASE
+
+  // Gestão de Domínio e DNS
+  CLOUDFLARE
+  GODADDY
+  NAMECHEAP
+  GANDI
+  PORKBUN
+  HOSTINGER
+  SQUARESPACE_DOMAINS
+  AWS_ROUTE_53
+  AZURE_DNS
+  GOOGLE_CLOUD_DNS
+  CPANEL
+  AGENTE_REGISTO_MZ
+
+  // Qualquer tipo
   OUTRO
 }
 

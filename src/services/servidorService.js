@@ -9,6 +9,15 @@ const atividadeService = require("./atividadeService");
 // Só estes tipos de plataforma podem ter servidores
 const TIPOS_COM_SERVIDORES = ["CLOUD_BASE_DADOS", "CONTAINERIZACAO"];
 
+// Sistemas hospedados neste servidor, um registo por ambiente e componente
+const SELECT_SISTEMAS_HOSPEDADOS = {
+  select: {
+    ambiente: true,
+    componente: true,
+    sistema: { select: { id: true, nome: true, status: true } },
+  },
+  orderBy: [{ ambiente: "asc" }, { componente: "asc" }],
+};
 // Seleção pública: NUNCA inclui passwordCifrada nem ipHash.
 // O ipCifrado é lido só para ser desencriptado em formatar().
 const SELECT_SERVIDOR = {
@@ -32,6 +41,8 @@ const SELECT_SERVIDOR = {
   plataforma: { select: { id: true, nome: true, tipo: true } },
   criadoEm: true,
   atualizadoEm: true,
+  _count: { select: { subdominios: true, infraestruturas: true } },
+  infraestruturas: SELECT_SISTEMAS_HOSPEDADOS,
   _count: { select: { subdominios: true, infraestruturas: true } },
 };
 
@@ -73,14 +84,15 @@ function normalizarIp(ip) {
 
 /** Devolve o servidor pronto para a resposta: IP legível, sem campos internos. */
 function formatar(servidor) {
-  const { ipCifrado, ipHash, _count, ...resto } = servidor;
+  const { ipCifrado, ipHash, _count, infraestruturas, ...resto } = servidor;
 
   return {
     ...resto,
     ip: desencriptarOuFalhar(ipCifrado, "o IP do servidor"),
+    sistemasHospedados: infraestruturas,
     totais: {
       subdominios: _count.subdominios,
-      sistemas: _count.infraestruturas,
+      sistemas: new Set(infraestruturas.map((i) => i.sistema.id)).size,
     },
   };
 }

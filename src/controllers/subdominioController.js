@@ -26,32 +26,3 @@ exports.obter = async (req, res, next) => {
     }
 };
 
-exports.criar = async (req, res, next) => {
-    try {
-        const subdominio = await service.criarSubdominio(req.body, req.user.id);
-
-        return response.success(res, MSG.SUBDOMINIO.CREATED, subdominio, HTTP.CREATED);
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.atualizar = async (req, res, next) => {
-    try {
-        const subdominio = await service.atualizarSubdominio(req.params.id, req.body, req.user.id);
-
-        return response.success(res, MSG.SUBDOMINIO.UPDATED, subdominio, HTTP.OK);
-    } catch (error) {
-        next(error);
-    }
-};
-
-exports.apagar = async (req, res, next) => {
-    try {
-        await service.apagarSubdominio(req.params.id, req.user.id);
-
-        return response.success(res, MSG.SUBDOMINIO.DELETED, null, HTTP.OK);
-    } catch (error) {
-        next(error);
-    }
-};

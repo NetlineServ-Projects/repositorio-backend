@@ -75,8 +75,18 @@ const subdominioIdParamsSchema = z.object({
   id: z.coerce.number({ error: "ID inválido." }).int("ID inválido.").positive("ID inválido."),
 });
 
+// Subdomínio registado dentro do formulário do sistema (o servidor vem da infraestrutura)
+const subdominioDaInfraestruturaSchema = z.object({
+  dominioId: dominioIdSchema,
+  nome: nomeSchema,
+  tipoDns: tipoDnsSchema,
+  destino: destinoSchema,
+});
+
+
 module.exports = {
   criarSubdominioSchema,
   atualizarSubdominioSchema,
   subdominioIdParamsSchema,
+  subdominioDaInfraestruturaSchema,
 };

@@ -1,6 +1,9 @@
 const { z } = require("zod");
+const { subdominioDaInfraestruturaSchema } = require("./subdominioValidator");
 
-const AMBIENTES = ["PRODUCAO", "TESTES", "DESENVOLVIMENTO"];
+const AMBIENTES = ["PRODUCAO", "TESTES"];
+const COMPONENTES = ["FRONTEND", "BACKEND"];
+
 
 const TIPOS_CREDENCIAL = [
   "ENV_VARIAVEIS",
@@ -29,8 +32,13 @@ const idSchema = z.coerce
   .positive("Identificador inválido.");
 
 const ambienteSchema = z.enum(AMBIENTES, {
-  error: "Ambiente inválido. Use PRODUCAO, TESTES ou DESENVOLVIMENTO.",
+  error: "Ambiente inválido. Use PRODUCAO ou TESTES .",
 });
+
+const componenteSchema = z.enum(COMPONENTES, {
+  error: "Componente inválido. Use FRONTEND ou BACKEND.",
+});
+
 
 // /sistemas/:sistemaId/infraestruturas
 const sistemaIdParamsSchema = z.object({
@@ -41,6 +49,7 @@ const sistemaIdParamsSchema = z.object({
 const infraestruturaParamsSchema = z.object({
   sistemaId: idSchema,
   ambiente: ambienteSchema,
+  componente: componenteSchema,
 });
 
 // /sistemas/:sistemaId/infraestruturas/:ambiente/credenciais/:credencialId
@@ -62,6 +71,8 @@ const credencialParamsSchema = infraestruturaParamsSchema.extend({
 
 const salvarInfraestruturaSchema = z
   .object({
+        // undefined = não mexer no subdomínio | null = remover | objeto = criar/atualizar
+    subdominio: subdominioDaInfraestruturaSchema.nullable().optional(),
     servidorId: z
       .number({ error: "O servidor deve ser um número." })
       .int("O servidor é inválido.")
@@ -81,7 +92,7 @@ const salvarInfraestruturaSchema = z
     url: z
       .string({ error: "O URL deve ser texto." })
       .trim()
-      .url("O URL de produção é inválido.")
+      .url("O URL é inválido.")
       .max(255, "O URL não pode ter mais de 255 caracteres.")
       .nullable()
       .optional(),
@@ -117,6 +128,7 @@ const credencialUpdateSchema = credencialSchema.partial().refine(
   { error: "Indique pelo menos um campo para actualizar." }
 );
 
+
 module.exports = {
   AMBIENTES,
   TIPOS_CREDENCIAL,
@@ -127,4 +139,5 @@ module.exports = {
   salvarInfraestruturaSchema,
   credencialSchema,
   credencialUpdateSchema,
+  componenteSchema,
 };

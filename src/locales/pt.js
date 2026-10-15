@@ -69,8 +69,13 @@ module.exports = {
         TIPO_INCOMPATIVEL: "Não é possível alterar o tipo: a plataforma tem registos associados incompatíveis com o novo tipo.",
         TEM_DEPENDENCIAS: "Não é possível apagar a plataforma: ainda tem domínios, servidores, imagens ou sistemas associados.",
         CAMPOS_REGISTRY_INVALIDOS: "Os dados de registry só podem ser definidos em plataformas do tipo Containerização.",
-        TOKEN_OBTIDO: "Token do registry obtido com sucesso.",
-        TOKEN_NAO_DEFINIDO: "Esta plataforma não tem token de registry definido.",
+        TOKEN_OBTIDO: "Token obtido com sucesso.",
+        TOKEN_NAO_DEFINIDO: "Esta plataforma não tem token definido.",
+        FORNECEDORES_OBTIDOS: "Fornecedores obtidos com sucesso.",
+        FORNECEDOR_INVALIDO_PARA_TIPO: "O fornecedor escolhido não pertence a este tipo de plataforma.",
+        NOME_OBRIGATORIO_OUTRO: 'Indique o nome da plataforma quando o fornecedor é "Outro".',
+        LOGOTIPO_ATUALIZADO: "Logótipo da plataforma atualizado com sucesso.",
+        LOGOTIPO_OBRIGATORIO: "É necessário enviar um ficheiro de imagem (PNG, JPEG ou WebP).",
     },
 
     SERVIDOR: {
@@ -133,8 +138,9 @@ module.exports = {
         INVALID_DATA: "Os dados fornecidos são inválidos.",
         INVALID_ID: "ID inválido.",
         CATEGORIA_REQUIRED: "A categoria é obrigatória.",
-        FILE_TOO_LARGE: "O ficheiro excede o tamanho máximo permitido (50MB).",
+        FILE_TOO_LARGE: "O ficheiro excede o tamanho máximo permitido.",
         INVALID_DOCUMENT_TYPE: "Tipo de ficheiro não permitido. Formatos aceites: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG.",
+        INVALID_LOGO_TYPE: "Formato de logótipo não permitido. Apenas PNG, JPEG e WebP são aceites.",
         NO_FILE_UPLOADED: "Nenhum ficheiro foi enviado."
     },
 

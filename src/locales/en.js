@@ -70,6 +70,11 @@ module.exports = {
         CAMPOS_REGISTRY_INVALIDOS: "Registry data can only be defined on Containerization platforms.",
         TOKEN_OBTIDO: "Registry token retrieved successfully.",
         TOKEN_NAO_DEFINIDO: "This platform does not have a registry token defined.",
+        FORNECEDORES_OBTIDOS: "Suppliers retrieved successfully.",
+        FORNECEDOR_INVALIDO_PARA_TIPO: "The selected supplier does not belong to this type of platform.",
+        NOME_OBRIGATORIO_OUTRO: 'Indicate the platform name when the supplier is "Other".',
+        LOGOTIPO_ATUALIZADO: "Platform logo updated successfully.",
+        LOGOTIPO_OBRIGATORIO: "An image file is required (PNG, JPEG or WebP).",
     },
 
     SERVIDOR: {
@@ -133,8 +138,9 @@ module.exports = {
         INVALID_DATA: "The data provided is invalid.",
         INVALID_ID: "Invalid ID.",
         CATEGORIA_REQUIRED: "Category is required.",
-        FILE_TOO_LARGE: "The file exceeds the maximum allowed size (50MB).",
+        FILE_TOO_LARGE: "The file exceeds the maximum allowed size.",
         INVALID_DOCUMENT_TYPE: "File type not allowed. Accepted formats: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG.",
+        INVALID_LOGO_TYPE: "Logo format not allowed. Only PNG, JPEG and WebP are accepted.",
         NO_FILE_UPLOADED: "No file was uploaded."
     },
 

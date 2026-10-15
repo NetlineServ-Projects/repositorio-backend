@@ -4,6 +4,8 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { parseId } = require("../utils/fileHelper");
 const atividadeService = require("./atividadeService");
+const { montarNomeCompleto } = require("./subdominioService");
+
 
 // ─── SELECT EXPLÍCITO ────────────────────────────────────────────────────────
 // Evita expor campos internos ou futuros acidentalmente.
@@ -62,6 +64,21 @@ const SELECT_SISTEMA_DETALHE = {
         orderBy: { dataSubmissao: "desc" },
         take: 50,
     },
+    // Só o subdomínio do frontend de cada ambiente: é o endereço que as pessoas abrem.
+    // Nunca se envia o tipo nem o valor do registo DNS.
+    infraestruturas: {
+        where: { componente: "FRONTEND", subdominio: { isNot: null } },
+        select: {
+            ambiente: true,
+            subdominio: {
+                select: {
+                    nome: true,
+                    dominio: { select: { nome: true } },
+                },
+            },
+        },
+        orderBy: { ambiente: "asc" }, // Produção primeiro, depois Testes
+    },
 };
 
 // ─── HELPERS INTERNOS ────────────────────────────────────────────────────────
@@ -72,12 +89,22 @@ const SELECT_SISTEMA_DETALHE = {
  */
 const STATUS_PARA_ENUM = {
     "Em Desenvolvimento": "EM_DESENVOLVIMENTO",
-    "Em Produção":        "EM_PRODUCAO",
-    "Manutenção":         "MANUTENCAO",
+    "Em Produção": "EM_PRODUCAO",
+    "Manutenção": "MANUTENCAO",
 };
 
 function mapearStatus(status) {
     return STATUS_PARA_ENUM[status] ?? "EM_DESENVOLVIMENTO";
+}
+
+/**
+ * Converte os subdomínios do frontend nas URLs finais de cada ambiente.
+ */
+function montarUrlsAmbientes(infraestruturas) {
+    return infraestruturas.map(({ ambiente, subdominio }) => ({
+        ambiente,
+        url: `https://${montarNomeCompleto(subdominio.nome, subdominio.dominio.nome)}`,
+    }));
 }
 
 /**
@@ -86,22 +113,22 @@ function mapearStatus(status) {
  */
 function montarDadosSistema(dados) {
     return {
-        nome:                      dados.nome,
-        descricaoCurta:            dados.descricaoCurta     ?? null,
-        descricaoLonga:            dados.descricaoLonga     ?? null,
-        status:                    mapearStatus(dados.status),
-        dataInicio:                dados.dataInicio  ? new Date(dados.dataInicio)  : null,
-        dataEntrega:               dados.dataEntrega ? new Date(dados.dataEntrega) : null,
-        desenvolvedores:           dados.desenvolvedores           ?? [],
-        empresasClientes:          dados.empresasClientes          ?? [],
-        tecnologiasFrontend:       dados.tecnologiasFrontend       ?? [],
-        tecnologiasBackend:        dados.tecnologiasBackend        ?? [],
+        nome: dados.nome,
+        descricaoCurta: dados.descricaoCurta ?? null,
+        descricaoLonga: dados.descricaoLonga ?? null,
+        status: mapearStatus(dados.status),
+        dataInicio: dados.dataInicio ? new Date(dados.dataInicio) : null,
+        dataEntrega: dados.dataEntrega ? new Date(dados.dataEntrega) : null,
+        desenvolvedores: dados.desenvolvedores ?? [],
+        empresasClientes: dados.empresasClientes ?? [],
+        tecnologiasFrontend: dados.tecnologiasFrontend ?? [],
+        tecnologiasBackend: dados.tecnologiasBackend ?? [],
         tecnologiasInfraestrutura: dados.tecnologiasInfraestrutura ?? [],
-        repositorioUrl:            dados.repositorioUrl            ?? null,
-        urlProducao:               dados.urlProducao               ?? null,
-        responsavelTecnico:        dados.responsavelTecnico        ?? null,
-        versaoAtual:               dados.versaoAtual               ?? null,
-        ativo:                     dados.ativo !== undefined ? dados.ativo : true,
+        repositorioUrl: dados.repositorioUrl ?? null,
+        urlProducao: dados.urlProducao ?? null,
+        responsavelTecnico: dados.responsavelTecnico ?? null,
+        versaoAtual: dados.versaoAtual ?? null,
+        ativo: dados.ativo !== undefined ? dados.ativo : true,
     };
 }
 
@@ -137,7 +164,7 @@ async function obterPorId(id) {
     const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
     const sistema = await prisma.sistema.findUnique({
-        where:  { id: idNum },
+        where: { id: idNum },
         select: SELECT_SISTEMA_DETALHE,
     });
 
@@ -145,7 +172,12 @@ async function obterPorId(id) {
         throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
-    return sistema;
+    const { infraestruturas, ...resto } = sistema;
+
+    return {
+        ...resto,
+        urlsAmbientes: montarUrlsAmbientes(infraestruturas),
+    };
 }
 
 // usuarioAtual precisa de { id } (vem de req.user no controller)
@@ -154,14 +186,14 @@ async function criar(dados, usuarioAtual) {
 
     return prisma.$transaction(async (tx) => {
         const novoSistema = await tx.sistema.create({
-            data:   montarDadosSistema(dados),
+            data: montarDadosSistema(dados),
             select: SELECT_SISTEMA_LISTA,
         });
 
         if (usuarioId) {
             await atividadeService.registrar(tx, {
                 usuarioId,
-                acao:      `Criou o sistema "${novoSistema.nome}"`,
+                acao: `Criou o sistema "${novoSistema.nome}"`,
                 sistemaId: novoSistema.id,
             });
         }
@@ -171,12 +203,12 @@ async function criar(dados, usuarioAtual) {
 }
 
 async function atualizar(id, dados, usuarioAtual) {
-    const idNum      = parseId(id, MSG.VALIDATION.INVALID_ID);
-    const usuarioId  = resolverUsuarioId(usuarioAtual);
+    const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
+    const usuarioId = resolverUsuarioId(usuarioAtual);
 
     return prisma.$transaction(async (tx) => {
         const sistemaExiste = await tx.sistema.findUnique({
-            where:  { id: idNum },
+            where: { id: idNum },
             select: { id: true, nome: true },
         });
 
@@ -185,15 +217,15 @@ async function atualizar(id, dados, usuarioAtual) {
         }
 
         const sistemaAtualizado = await tx.sistema.update({
-            where:  { id: idNum },
-            data:   montarDadosSistema(dados),
+            where: { id: idNum },
+            data: montarDadosSistema(dados),
             select: SELECT_SISTEMA_LISTA,
         });
 
         if (usuarioId) {
             await atividadeService.registrar(tx, {
                 usuarioId,
-                acao:      `Atualizou o sistema "${sistemaAtualizado.nome}"`,
+                acao: `Atualizou o sistema "${sistemaAtualizado.nome}"`,
                 sistemaId: sistemaAtualizado.id,
             });
         }
@@ -203,12 +235,12 @@ async function atualizar(id, dados, usuarioAtual) {
 }
 
 async function apagar(id, usuarioAtual) {
-    const idNum     = parseId(id, MSG.VALIDATION.INVALID_ID);
+    const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
     const usuarioId = resolverUsuarioId(usuarioAtual);
 
     return prisma.$transaction(async (tx) => {
         const sistemaExiste = await tx.sistema.findUnique({
-            where:  { id: idNum },
+            where: { id: idNum },
             select: { id: true, nome: true },
         });
 

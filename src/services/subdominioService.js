@@ -64,17 +64,6 @@ async function obterDominioOuFalhar(dominioId) {
   return dominio;
 }
 
-async function garantirServidorExiste(servidorId) {
-  const servidor = await prisma.servidor.findUnique({
-    where: { id: servidorId },
-    select: { id: true },
-  });
-
-  if (!servidor) {
-    throw new AppError(MSG.SERVIDOR.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
-  }
-}
-
 /**
  * Valida o ESTADO FINAL do registo (num PATCH, já misturado com o que existia):
  *   A / AAAA        → servidorId obrigatório, sem destino
@@ -163,106 +152,36 @@ async function obterSubdominio(id) {
   return formatar(await obterSubdominioOuFalhar(id));
 }
 
-async function criarSubdominio(dados, usuarioId) {
-  const estado = {
-    dominioId: dados.dominioId,
-    nome: dados.nome,
-    tipoDns: dados.tipoDns,
-    servidorId: dados.servidorId ?? null,
-    destino: dados.destino ?? null,
-  };
 
+
+// Monta o registo DNS a partir do que o formulário do sistema envia.
+// A / AAAA apontam para o servidor da infraestrutura; os restantes usam "destino".
+function montarEstadoDaInfraestrutura(subdominio, servidorId) {
+  const apontaParaServidor = TIPOS_COM_SERVIDOR.includes(subdominio.tipoDns);
+
+  return {
+    dominioId: subdominio.dominioId,
+    nome: subdominio.nome,
+    tipoDns: subdominio.tipoDns,
+    servidorId: apontaParaServidor ? servidorId : null,
+    destino: apontaParaServidor ? null : (subdominio.destino ?? null),
+  };
+}
+
+// ignorarId = id do subdomínio que esta infraestrutura já tem (se existir)
+async function validarParaInfraestrutura(estado, ignorarId) {
   await obterDominioOuFalhar(estado.dominioId);
   validarCoerencia(estado);
-
-  if (estado.servidorId !== null) {
-    await garantirServidorExiste(estado.servidorId);
-  }
-
-  await garantirRegistoLivre(estado);
-  await garantirSemConflitoCname(estado);
-
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const criado = await tx.subdominio.create({
-        data: estado,
-        select: SELECT_SUBDOMINIO,
-      });
-
-      await atividadeService.registrar(tx, {
-        usuarioId,
-        acao: `Criou o subdomínio "${montarNomeCompleto(criado.nome, criado.dominio.nome)}" (${criado.tipoDns})`,
-      });
-
-      return formatar(criado);
-    });
-  } catch (erro) {
-    return tratarRegistoDuplicado(erro);
-  }
-}
-
-async function atualizarSubdominio(id, dados, usuarioId) {
-  const atual = await obterSubdominioOuFalhar(id);
-
-  // Estado final: o que vem no pedido por cima do que já existia
-  const estado = {
-    dominioId: dados.dominioId !== undefined ? dados.dominioId : atual.dominioId,
-    nome: dados.nome !== undefined ? dados.nome : atual.nome,
-    tipoDns: dados.tipoDns !== undefined ? dados.tipoDns : atual.tipoDns,
-    servidorId: dados.servidorId !== undefined ? dados.servidorId : atual.servidorId,
-    destino: dados.destino !== undefined ? dados.destino : atual.destino,
-  };
-
-  if (estado.dominioId !== atual.dominioId) {
-    await obterDominioOuFalhar(estado.dominioId);
-  }
-
-  validarCoerencia(estado);
-
-  if (estado.servidorId !== null && estado.servidorId !== atual.servidorId) {
-    await garantirServidorExiste(estado.servidorId);
-  }
-
-  await garantirRegistoLivre(estado, id);
-  await garantirSemConflitoCname(estado, id);
-
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const atualizado = await tx.subdominio.update({
-        where: { id },
-        data: estado,
-        select: SELECT_SUBDOMINIO,
-      });
-
-      await atividadeService.registrar(tx, {
-        usuarioId,
-        acao: `Atualizou o subdomínio "${montarNomeCompleto(atualizado.nome, atualizado.dominio.nome)}" (${atualizado.tipoDns})`,
-      });
-
-      return formatar(atualizado);
-    });
-  } catch (erro) {
-    return tratarRegistoDuplicado(erro);
-  }
-}
-
-async function apagarSubdominio(id, usuarioId) {
-  const atual = await obterSubdominioOuFalhar(id);
-
-  return prisma.$transaction(async (tx) => {
-    await tx.subdominio.delete({ where: { id } });
-
-    await atividadeService.registrar(tx, {
-      usuarioId,
-      acao: `Apagou o subdomínio "${montarNomeCompleto(atual.nome, atual.dominio.nome)}" (${atual.tipoDns})`,
-    });
-  });
+  await garantirRegistoLivre(estado, ignorarId);
+  await garantirSemConflitoCname(estado, ignorarId);
 }
 
 module.exports = {
   listarSubdominios,
   obterSubdominio,
-  criarSubdominio,
-  atualizarSubdominio,
-  apagarSubdominio,
+  montarEstadoDaInfraestrutura,
+  validarParaInfraestrutura,
+  tratarRegistoDuplicado,
+  montarNomeCompleto,
+
 };

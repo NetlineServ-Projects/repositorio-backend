@@ -83,6 +83,26 @@ function apagarFicheiroAntigoPerfil(urlFotografiaAntiga) {
     });
 }
 
+/**
+ * Apaga o logótipo antigo de uma plataforma em background (sem bloquear a resposta).
+ * O logótipo é guardado em uploads/plataformas/.
+ *
+ * @param {string|null} urlLogotipoAntigo - URL relativa do logótipo anterior (ex: "/uploads/plataformas/abc.png").
+ */
+function apagarFicheiroAntigoLogotipo(urlLogotipoAntigo) {
+    if (!urlLogotipoAntigo) return;
+
+    const fs = require("fs/promises");
+    const caminhoAntigo = path.join(
+        "uploads/plataformas",
+        path.basename(urlLogotipoAntigo)
+    );
+
+    fs.unlink(caminhoAntigo).catch((err) => {
+        console.warn(`[fileHelper] Não foi possível apagar logótipo antigo: ${caminhoAntigo}`, err.code);
+    });
+}
+
 // ─── IDs ─────────────────────────────────────────────────────────────────────
 
 /**
@@ -144,9 +164,8 @@ function validarEnvVars(variaveis) {
  * Usado nas mensagens de auditoria (Atividade).
  */
 const ROTULO_AMBIENTE = {
-    PRODUCAO:       "Produção",
-    TESTES:         "Testes",
-    DESENVOLVIMENTO: "Desenvolvimento",
+    PRODUCAO: "Produção",
+    TESTES:   "Testes",
 };
 
 function rotuloAmbiente(ambiente) {
@@ -179,6 +198,7 @@ module.exports = {
     // Ficheiros
     gerarNomeArquivo,
     apagarFicheiroAntigoPerfil,
+    apagarFicheiroAntigoLogotipo,
 
     // IDs
     parseId,

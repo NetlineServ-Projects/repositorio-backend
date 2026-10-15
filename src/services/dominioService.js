@@ -3,6 +3,7 @@ const AppError = require("../utils/AppError");
 const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const atividadeService = require("./atividadeService");
+const { montarNomeCompleto } = require("./subdominioService");
 
 // Só estas plataformas podem ter domínios
 const TIPO_PLATAFORMA_COM_DOMINIOS = "GESTAO_DOMINIO";
@@ -21,6 +22,29 @@ const SELECT_DOMINIO = {
   _count: { select: { subdominios: true } },
 };
 
+// Domínio com os seus subdomínios (só leitura). O servidor aparece só com
+// identificação: o IP e a password nunca saem daqui.
+const SELECT_DOMINIO_DETALHE = {
+  ...SELECT_DOMINIO,
+  subdominios: {
+    select: {
+      id: true,
+      nome: true,
+      tipoDns: true,
+      destino: true,
+      servidor: { select: { id: true, nome: true, hostname: true } },
+      sistemaInfraestrutura: {
+        select: {
+          ambiente: true,
+          componente: true,
+          sistema: { select: { id: true, nome: true } },
+        },
+      },
+    },
+    orderBy: [{ nome: "asc" }, { tipoDns: "asc" }],
+  },
+};
+
 /**
  * Dias que faltam para a expiração, contados desde o início do dia de hoje (UTC).
  * Zero significa que expira hoje; negativo significa que já expirou.
@@ -36,8 +60,20 @@ function calcularDiasParaExpirar(dataExpiracao) {
   return Math.round((dataExpiracao.getTime() - inicioDeHoje) / MILISSEGUNDOS_POR_DIA);
 }
 
+function formatarSubdominio(subdominio, nomeDominio) {
+  const { sistemaInfraestrutura, ...resto } = subdominio;
+
+  return {
+    ...resto,
+    nomeCompleto: montarNomeCompleto(resto.nome, nomeDominio),
+    sistema: sistemaInfraestrutura.sistema,
+    ambiente: sistemaInfraestrutura.ambiente,
+    componente: sistemaInfraestrutura.componente,
+  };
+}
+
 function formatar(dominio) {
-  const { _count, ...resto } = dominio;
+  const { _count, subdominios, ...resto } = dominio;
   const diasParaExpirar = calcularDiasParaExpirar(resto.dataExpiracao);
 
   return {
@@ -45,13 +81,17 @@ function formatar(dominio) {
     diasParaExpirar,
     expirado: diasParaExpirar < 0,
     totais: { subdominios: _count.subdominios },
+    // só existe quando o select de detalhe foi usado
+    ...(subdominios && {
+      subdominios: subdominios.map((s) => formatarSubdominio(s, resto.nome)),
+    }),
   };
 }
 
-async function obterDominioOuFalhar(id) {
+async function obterDominioOuFalhar(id, select = SELECT_DOMINIO) {
   const dominio = await prisma.dominio.findUnique({
     where: { id },
-    select: SELECT_DOMINIO,
+    select,
   });
 
   if (!dominio) {
@@ -101,7 +141,7 @@ function tratarNomeDuplicado(erro) {
 
 async function listarDominios() {
   const dominios = await prisma.dominio.findMany({
-    select: SELECT_DOMINIO,
+    select: SELECT_DOMINIO_DETALHE,
     orderBy: [{ dataExpiracao: "asc" }, { nome: "asc" }], // os que expiram primeiro vêm no topo
   });
 
@@ -109,8 +149,9 @@ async function listarDominios() {
 }
 
 async function obterDominio(id) {
-  return formatar(await obterDominioOuFalhar(id));
+  return formatar(await obterDominioOuFalhar(id, SELECT_DOMINIO_DETALHE));
 }
+
 
 async function criarDominio(dados, usuarioId) {
   await garantirPlataformaDeDominios(dados.plataformaId);
@@ -183,6 +224,7 @@ async function apagarDominio(id, usuarioId) {
     });
   });
 }
+
 
 module.exports = {
   listarDominios,

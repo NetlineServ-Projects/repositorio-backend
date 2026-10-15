@@ -43,6 +43,15 @@ function errorMiddleware(err, req, res, next) {
         );
     }
 
+    // ── Formato de logótipo não permitido ─────────────────────────────────────
+    if (err.code === "INVALID_LOGO_TYPE") {
+        return response.error(
+            res,
+            MESSAGES.VALIDATION.INVALID_LOGO_TYPE,
+            HTTP_STATUS.BAD_REQUEST
+        );
+    }
+
     // ── Prisma P2002: violação de constraint unique ───────────────────────────
     // Não mapeamos para uma mensagem específica de domínio (ex: "email já existe")
     // porque P2002 pode ocorrer em qualquer modelo. O service deve apanhar este

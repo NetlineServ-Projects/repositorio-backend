@@ -4,45 +4,74 @@ const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const atividadeService = require("./atividadeService");
 const { encriptar, desencriptar } = require("../utils/crypto");
-const { rotuloTipoPlataforma } = require("../utils/fileHelper");
+const { rotuloTipoPlataforma, apagarFicheiroAntigoLogotipo } = require("../utils/fileHelper");
+const { fornecedorPertenceAoTipo, obterFornecedor } = require("../constants/fornecedoresPlataforma");
+
 
 const TIPO_GESTAO_DOMINIO = "GESTAO_DOMINIO";
 const TIPO_CONTAINERIZACAO = "CONTAINERIZACAO";
 const MILISSEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
-const CAMPOS_REGISTRY = [
-  "fornecedorContainer",
-  "registryUrl",
-  "namespace",
-  "registryUtilizador",
-  "registryToken",
-];
 
-// Usado ao mudar o tipo de uma plataforma de containerização para outro
-const LIMPAR_REGISTRY = {
-  fornecedorContainer: null,
-  registryUrl: null,
-  namespace: null,
-  registryUtilizador: null,
-  registryTokenEnc: null,
-};
+const FORNECEDOR_OUTRO = "OUTRO";
+
+// Campos que só fazem sentido numa plataforma de containerização
+const CAMPOS_SO_CONTAINERIZACAO = ["registryUrl", "namespace"];
+const LIMPAR_CAMPOS_CONTAINERIZACAO = { registryUrl: null, namespace: null };
 
 // Nunca devolve nada sensível: a plataforma só tem dados de identificação
+// Nunca devolve nada sensível: o token só sai pela rota protegida com reautenticação
 const SELECT_PLATAFORMA = {
   id: true,
   nome: true,
   tipo: true,
+  fornecedor: true,
+  logotipo: true,
   urlPainel: true,
   ativo: true,
-  criadoEm: true,
-  atualizadoEm: true,
-  fornecedorContainer: true,
+  utilizador: true,
+  tokenCifrado: true, // lido só para saber se existe (ver formatar)
   registryUrl: true,
   namespace: true,
-  registryUtilizador: true,
-  registryTokenEnc: true,
+  criadoEm: true,
+  atualizadoEm: true,
   _count: { select: { dominios: true, servidores: true, infraestruturas: true, imagens: true } },
 };
 
+// Registos de infraestrutura (ambiente + componente) com o sistema e os
+// metadados das credenciais. O valor das credenciais nunca sai daqui.
+const SELECT_INFRAESTRUTURAS_ARVORE = {
+  select: {
+    id: true,
+    ambiente: true,
+    componente: true,
+    url: true,
+    sistema: {
+      select: {
+        id: true,
+        nome: true,
+        status: true,
+        versaoAtual: true,
+        responsavelTecnico: true,
+        repositorioUrl: true,
+        urlProducao: true,
+      },
+    },
+    credenciais: {
+      select: { id: true, tipo: true, label: true, criadoEm: true },
+      orderBy: { criadoEm: "asc" },
+    },
+  },
+  orderBy: [{ ambiente: "asc" }, { componente: "asc" }],
+};
+
+// A que sistema, ambiente e componente pertence um subdomínio
+const SELECT_ORIGEM_SUBDOMINIO = {
+  select: {
+    ambiente: true,
+    componente: true,
+    sistema: { select: { id: true, nome: true } },
+  },
+};
 // ─── ESTRUTURA COMPLETA DA ÁRVORE ─────────────────────────────────────────────
 // Hierarquia: Plataforma → Domínio → Subdomínio → Servidor → Sistema → Credenciais
 // Notas de segurança:
@@ -55,6 +84,8 @@ const SELECT_ARVORE = {
   id: true,
   nome: true,
   tipo: true,
+  fornecedor: true,
+  logotipo: true,
   urlPainel: true,
   ativo: true,
   criadoEm: true,
@@ -73,6 +104,7 @@ const SELECT_ARVORE = {
           nome: true,
           tipoDns: true,
           destino: true,
+          sistemaInfraestrutura: SELECT_ORIGEM_SUBDOMINIO,
           servidorId: true,
           servidor: {
             select: {
@@ -92,34 +124,8 @@ const SELECT_ARVORE = {
               versaoSo: true,
               cloud: true,
               regiao: true,
-              infraestruturas: {
-                select: {
-                  id: true,
-                  ambiente: true,
-                  url: true,
-                  sistema: {
-                    select: {
-                      id: true,
-                      nome: true,
-                      status: true,
-                      versaoAtual: true,
-                      responsavelTecnico: true,
-                      repositorioUrl: true,
-                      urlProducao: true,
-                    },
-                  },
-                  credenciais: {
-                    select: {
-                      id: true,
-                      tipo: true,
-                      label: true,
-                      criadoEm: true,
-                    },
-                    orderBy: { criadoEm: "asc" },
-                  },
-                },
-                orderBy: { ambiente: "asc" },
-              },
+              infraestruturas: SELECT_INFRAESTRUTURAS_ARVORE,
+
             },
           },
         },
@@ -153,72 +159,20 @@ const SELECT_ARVORE = {
           nome: true,
           tipoDns: true,
           destino: true,
+          sistemaInfraestrutura: SELECT_ORIGEM_SUBDOMINIO,
           dominio: {
             select: { id: true, nome: true },
           },
         },
         orderBy: [{ nome: "asc" }, { tipoDns: "asc" }],
       },
-      infraestruturas: {
-        select: {
-          id: true,
-          ambiente: true,
-          url: true,
-          sistema: {
-            select: {
-              id: true,
-              nome: true,
-              status: true,
-              versaoAtual: true,
-              responsavelTecnico: true,
-              repositorioUrl: true,
-              urlProducao: true,
-            },
-          },
-          credenciais: {
-            select: {
-              id: true,
-              tipo: true,
-              label: true,
-              criadoEm: true,
-            },
-            orderBy: { criadoEm: "asc" },
-          },
-        },
-        orderBy: { ambiente: "asc" },
-      },
+      infraestruturas: SELECT_INFRAESTRUTURAS_ARVORE
     },
     orderBy: { nome: "asc" },
   },
   // 3. Sistemas ligados directamente à plataforma sem servidor dedicado (ex: Vercel)
-  infraestruturas: {
-    select: {
-      id: true,
-      ambiente: true,
-      url: true,
-      sistema: {
-        select: {
-          id: true,
-          nome: true,
-          status: true,
-          versaoAtual: true,
-          responsavelTecnico: true,
-          repositorioUrl: true,
-          urlProducao: true,
-        },
-      },
-      credenciais: {
-        select: {
-          id: true,
-          tipo: true,
-          label: true,
-          criadoEm: true,
-        },
-        orderBy: { criadoEm: "asc" },
-      },
-    },
-    orderBy: { ambiente: "asc" },
-  },
+  infraestruturas: SELECT_INFRAESTRUTURAS_ARVORE,
+
   // 4. Imagens (se for CONTAINERIZACAO)
   imagens: {
     select: {
@@ -310,10 +264,10 @@ function formatarArvore(plataforma) {
 }
 
 function formatar(plataforma) {
-  const { _count, registryTokenEnc, ...resto } = plataforma;
+  const { _count, tokenCifrado, ...resto } = plataforma;
   return {
     ...resto,
-    temTokenRegistry: Boolean(registryTokenEnc),
+    temToken: Boolean(tokenCifrado),
     totais: {
       dominios: _count?.dominios ?? 0,
       servidores: _count?.servidores ?? 0,
@@ -322,6 +276,7 @@ function formatar(plataforma) {
     },
   };
 }
+
 async function obterPlataformaOuFalhar(id) {
   const plataforma = await prisma.plataforma.findUnique({
     where: { id },
@@ -413,30 +368,51 @@ async function obterArvorePlataforma(id) {
   return formatarArvore(plataforma);
 }
 
-function prepararDadosRegistry(dados, tipoDestino) {
-  const { registryToken, ...data } = dados;
+/**
+ * Valida o ESTADO FINAL da plataforma (o que vem no pedido por cima do que já existia)
+ * e monta os dados a gravar:
+ *   - o fornecedor tem de pertencer ao tipo;
+ *   - o nome vem do fornecedor, exceto em "Outro", onde é o utilizador que o escreve;
+ *   - registryUrl e namespace só existem em CONTAINERIZACAO;
+ *   - o token é encriptado antes de gravar.
+ */
+function prepararDadosPlataforma(dados, atual) {
+  const { token, nome, ...data } = dados;
 
-  if (tipoDestino !== TIPO_CONTAINERIZACAO) {
-    const enviouCampoRegistry = CAMPOS_REGISTRY.some(
-      (campo) => dados[campo] !== undefined && dados[campo] !== null
-    );
-    if (enviouCampoRegistry) {
-      throw new AppError(MSG.PLATAFORMA.CAMPOS_REGISTRY_INVALIDOS, HTTP_STATUS.CONFLICT);
-    }
-    return data;
+  const tipo = dados.tipo ?? atual?.tipo;
+  const fornecedor = dados.fornecedor ?? atual?.fornecedor;
+
+  if (!fornecedorPertenceAoTipo(tipo, fornecedor)) {
+    throw new AppError(MSG.PLATAFORMA.FORNECEDOR_INVALIDO_PARA_TIPO, HTTP_STATUS.UNPROCESSABLE_ENTITY);
   }
 
-  if (registryToken !== undefined) {
-    data.registryTokenEnc = registryToken === null ? null : encriptar(registryToken);
+  if (fornecedor !== FORNECEDOR_OUTRO) {
+    data.nome = obterFornecedor(tipo, fornecedor).rotulo;
+  } else if (nome !== undefined) {
+    data.nome = nome;
+  } else if (!atual || atual.fornecedor !== FORNECEDOR_OUTRO) {
+    throw new AppError(MSG.PLATAFORMA.NOME_OBRIGATORIO_OUTRO, HTTP_STATUS.UNPROCESSABLE_ENTITY);
+  }
+
+  if (tipo !== TIPO_CONTAINERIZACAO) {
+    const enviouCampoDeContainerizacao = CAMPOS_SO_CONTAINERIZACAO.some(
+      (campo) => dados[campo] !== undefined && dados[campo] !== null
+    );
+    if (enviouCampoDeContainerizacao) {
+      throw new AppError(MSG.PLATAFORMA.CAMPOS_REGISTRY_INVALIDOS, HTTP_STATUS.CONFLICT);
+    }
+  }
+
+  if (token !== undefined) {
+    data.tokenCifrado = token === null ? null : encriptar(token);
   }
 
   return data;
 }
 
 async function criarPlataforma(dados, usuarioId) {
-  await garantirNomeLivre(dados.nome);
-
-  const data = prepararDadosRegistry(dados, dados.tipo);
+  const data = prepararDadosPlataforma(dados, null);
+  await garantirNomeLivre(data.nome);
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -460,15 +436,15 @@ async function criarPlataforma(dados, usuarioId) {
 async function atualizarPlataforma(id, dados, usuarioId) {
   const atual = await obterPlataformaOuFalhar(id);
 
+  const data = prepararDadosPlataforma(dados, atual);
   const tipoDestino = dados.tipo ?? atual.tipo;
-  const data = prepararDadosRegistry(dados, tipoDestino);
 
   if (tipoDestino !== TIPO_CONTAINERIZACAO && atual.tipo === TIPO_CONTAINERIZACAO) {
-    Object.assign(data, LIMPAR_REGISTRY);
+    Object.assign(data, LIMPAR_CAMPOS_CONTAINERIZACAO);
   }
 
-  if (dados.nome !== undefined) {
-    await garantirNomeLivre(dados.nome, id);
+  if (data.nome !== undefined) {
+    await garantirNomeLivre(data.nome, id);
   }
 
   if (dados.tipo !== undefined && dados.tipo !== atual.tipo) {
@@ -513,36 +489,64 @@ async function apagarPlataforma(id, usuarioId) {
   });
 }
 
-async function revelarTokenRegistry(id, usuarioId) {
+async function revelarToken(id, usuarioId) {
   const plataforma = await prisma.plataforma.findUnique({
     where: { id },
-    select: { id: true, nome: true, registryTokenEnc: true },
+    select: { id: true, nome: true, tokenCifrado: true },
   });
 
   if (!plataforma) {
     throw new AppError(MSG.PLATAFORMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
   }
 
-  if (!plataforma.registryTokenEnc) {
+  if (!plataforma.tokenCifrado) {
     throw new AppError(MSG.PLATAFORMA.TOKEN_NAO_DEFINIDO, HTTP_STATUS.NOT_FOUND);
   }
 
   let token;
   try {
-    token = desencriptar(plataforma.registryTokenEnc);
+    token = desencriptar(plataforma.tokenCifrado);
   } catch (_erro) {
     throw new AppError(
-      "Não foi possível desencriptar o token do registry. Verifique a chave de encriptação.",
+      "Não foi possível desencriptar o token da plataforma. Verifique a chave de encriptação.",
       HTTP_STATUS.INTERNAL_SERVER_ERROR
     );
   }
 
   await atividadeService.registrar(prisma, {
     usuarioId,
-    acao: `Visualizou o token do registry da plataforma "${plataforma.nome}"`,
+    acao: `Visualizou o token da plataforma "${plataforma.nome}"`,
   });
 
   return { token };
+}
+
+/**
+ * Substitui o logótipo de uma plataforma.
+ * O ficheiro antigo é apagado em background (sem bloquear a resposta).
+ *
+ * @param {number} id           - ID da plataforma.
+ * @param {string} urlLogotipo  - URL relativa do novo logótipo (ex: "/uploads/plataformas/abc.png").
+ * @param {number} usuarioId    - ID do utilizador que fez o upload.
+ */
+async function atualizarLogotipo(id, urlLogotipo, usuarioId) {
+  const atual = await obterPlataformaOuFalhar(id);
+
+  const atualizada = await prisma.plataforma.update({
+    where: { id },
+    data: { logotipo: urlLogotipo },
+    select: SELECT_PLATAFORMA,
+  });
+
+  // Apaga o ficheiro antigo em background — não bloqueia a resposta
+  apagarFicheiroAntigoLogotipo(atual.logotipo);
+
+  await atividadeService.registrar(prisma, {
+    usuarioId,
+    acao: `Atualizou o logótipo da plataforma "${atual.nome}"`,
+  });
+
+  return formatar(atualizada);
 }
 
 module.exports = {
@@ -553,5 +557,6 @@ module.exports = {
   criarPlataforma,
   atualizarPlataforma,
   apagarPlataforma,
-  revelarTokenRegistry
+  revelarToken,
+  atualizarLogotipo,
 };

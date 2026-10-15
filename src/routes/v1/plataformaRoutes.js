@@ -7,6 +7,7 @@ const authorize = require("../../middlewares/roleMiddleware");
 const validate = require("../../validators/validate");
 const ROLES = require("../../constants/roles");
 const exigirReautenticacao = require("../../middlewares/exigirReautenticacao");
+const { uploadLogotipo } = require("../../config/multer");
 
 const {
   criarPlataformaSchema,
@@ -16,7 +17,7 @@ const {
 
 // Leitura: qualquer utilizador autenticado (ADMIN e FUNCIONARIO).
 // Escrita: exclusivo ADMIN.
-// Revelar o token do registry: exige reautenticação recente (token elevado, 3 min),
+// Revelar o token: exige reautenticação recente (token elevado, 3 min),
 // tal como a password do servidor.
 const leitura = [authMiddleware];
 const escrita = [authMiddleware, authorize(ROLES.ADMIN)];
@@ -28,6 +29,9 @@ router.get("/", ...leitura, plataformaController.listar);
 // NOTA: Tem de vir antes de "/:id" para não ser capturada como parâmetro
 router.get("/arvore", ...leitura, plataformaController.obterArvore);
 
+// Catálogo de fornecedores por tipo (para os dropdowns do formulário)
+router.get("/fornecedores", ...leitura, plataformaController.listarFornecedores);
+
 // Árvore de uma plataforma específica
 router.get(
   "/:id/arvore",
@@ -37,10 +41,19 @@ router.get(
 );
 
 router.get(
-  "/:id/token-registry",
+  "/:id/token",
   ...leituraProtegida,
   validate(plataformaIdParamsSchema, "params"),
-  plataformaController.revelarTokenRegistry
+  plataformaController.revelarToken
+);
+
+// Upload do logótipo (ADMIN; multipart/form-data, campo: "logotipo")
+router.patch(
+  "/:id/logotipo",
+  ...escrita,
+  validate(plataformaIdParamsSchema, "params"),
+  uploadLogotipo.single("logotipo"),
+  plataformaController.atualizarLogotipo
 );
 
 router.get(

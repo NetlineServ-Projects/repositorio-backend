@@ -32,10 +32,14 @@ const escrita = [authMiddleware, authorize(ROLES.ADMIN), exigirReautenticacao];
 
 // Nas rotas abaixo, a validação vem depois da autenticação: quem não tem
 // sessão nem token elevado não recebe detalhes de validação.
+//
+// Cada infraestrutura é identificada por sistema + ambiente + componente
+// (FRONTEND ou BACKEND).
 
 // ── Leitura ──────────────────────────────────────────────────────────────
 
-// Ambientes que já têm infraestrutura registada (nada é desencriptado)
+// Infraestruturas já registadas do sistema, de todos os ambientes e
+// componentes (nada é desencriptado)
 router.get(
   "/:sistemaId/infraestruturas",
   ...leitura,
@@ -43,9 +47,9 @@ router.get(
   sistemaInfraestruturaController.listar
 );
 
-// Infraestrutura de um ambiente, desencriptada e auditada
+// Infraestrutura de um ambiente e componente, desencriptada e auditada
 router.get(
-  "/:sistemaId/infraestruturas/:ambiente",
+  "/:sistemaId/infraestruturas/:ambiente/:componente",
   ...leitura,
   validate(infraestruturaParamsSchema, "params"),
   sistemaInfraestruturaController.obter
@@ -53,9 +57,10 @@ router.get(
 
 // ── Escrita ──────────────────────────────────────────────────────────────
 
-// Cria ou atualiza a infraestrutura de um ambiente (upsert)
+// Cria ou atualiza a infraestrutura de um ambiente e componente (upsert),
+// incluindo o subdomínio, se vier no corpo do pedido
 router.put(
-  "/:sistemaId/infraestruturas/:ambiente",
+  "/:sistemaId/infraestruturas/:ambiente/:componente",
   ...escrita,
   validate(infraestruturaParamsSchema, "params"),
   validate(salvarInfraestruturaSchema),
@@ -63,7 +68,7 @@ router.put(
 );
 
 router.post(
-  "/:sistemaId/infraestruturas/:ambiente/credenciais",
+  "/:sistemaId/infraestruturas/:ambiente/:componente/credenciais",
   ...escrita,
   validate(infraestruturaParamsSchema, "params"),
   validate(credencialSchema),
@@ -71,7 +76,7 @@ router.post(
 );
 
 router.patch(
-  "/:sistemaId/infraestruturas/:ambiente/credenciais/:credencialId",
+  "/:sistemaId/infraestruturas/:ambiente/:componente/credenciais/:credencialId",
   ...escrita,
   validate(credencialParamsSchema, "params"),
   validate(credencialUpdateSchema),
@@ -79,7 +84,7 @@ router.patch(
 );
 
 router.delete(
-  "/:sistemaId/infraestruturas/:ambiente/credenciais/:credencialId",
+  "/:sistemaId/infraestruturas/:ambiente/:componente/credenciais/:credencialId",
   ...escrita,
   validate(credencialParamsSchema, "params"),
   sistemaInfraestruturaController.apagarCredencial
