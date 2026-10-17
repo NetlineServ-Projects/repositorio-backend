@@ -78,6 +78,7 @@ model Sistema {
   tecnologiasInfraestrutura Json?
   repositorioUrl            String?       @db.VarChar(255)
   urlProducao               String?       @db.VarChar(255)
+  urlTestes                 String?       @db.VarChar(255)
   responsavelTecnico        String?       @db.VarChar(255)
   versaoAtual               String?       @db.VarChar(50)
   ativo                     Boolean       @default(true)
@@ -88,6 +89,10 @@ model Sistema {
 
   infraestruturas SistemaInfraestrutura[]
 
+  plataformaFrontendId Int?
+  plataformaFrontend   Plataforma? @relation("FrontendDoSistema", fields: [plataformaFrontendId], references: [id], onDelete: SetNull)
+
+  @@index([plataformaFrontendId])
   @@map("sistemas")
 }
     
@@ -112,7 +117,8 @@ model Plataforma {
   servidores      Servidor[]
   // Sistemas ligados diretamente à plataforma, sem servidor (ex: Vercel)
   infraestruturas SistemaInfraestrutura[]
-
+  // Sistemas cujo frontend está hospedado nesta plataforma (ex: Vercel)
+  sistemasFrontend Sistema[] @relation("FrontendDoSistema")
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -210,7 +216,8 @@ model ImagemContainer {
 
   plataformaId Int
   plataforma   Plataforma         @relation(fields: [plataformaId], references: [id], onDelete: Cascade)
-
+  
+  infraestruturas SistemaInfraestrutura[]
   @@unique([plataformaId, nome, tag])
 }
 
@@ -220,15 +227,15 @@ model SistemaInfraestrutura {
   sistema   Sistema @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
 
   ambiente TipoAmbiente @default(PRODUCAO)
-  componente ComponenteSistema @default(BACKEND)
 
-  
-  servidorId   Int?
-  servidor     Servidor?   @relation(fields: [servidorId], references: [id], onDelete: SetNull)
   plataformaId Int?
-  plataforma   Plataforma? @relation(fields: [plataformaId], references: [id], onDelete: SetNull)
+  plataforma   Plataforma?      @relation(fields: [plataformaId], references: [id], onDelete: SetNull)
+  servidorId   Int?
+  servidor     Servidor?        @relation(fields: [servidorId], references: [id], onDelete: SetNull)
+  imagemId     Int?
+  imagem       ImagemContainer? @relation(fields: [imagemId], references: [id], onDelete: SetNull)
 
-  url String? @db.VarChar(255) // endereço do sistema neste ambiente
+  url String? @db.VarChar(255) // endereço do backend neste ambiente, quando não há subdomínio
 
   ipServidor    String? @db.Text // valor encriptado (AES-256-GCM)
   cloudProvedor String? @db.Text // valor encriptado (AES-256-GCM)
@@ -239,10 +246,11 @@ model SistemaInfraestrutura {
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  // Um sistema só pode ter UMA infraestrutura por tipo de ambiente
-  @@unique([sistemaId, ambiente, componente])
+  // Um sistema só pode ter UMA infraestrutura por ambiente
+  @@unique([sistemaId, ambiente])
   @@index([servidorId])
   @@index([plataformaId])
+  @@index([imagemId])
 }
 
 model CredencialSistema {
@@ -293,11 +301,6 @@ enum StatusSistema {
 enum TipoAmbiente {
   PRODUCAO
   TESTES
-}
-
-enum ComponenteSistema {
-  FRONTEND
-  BACKEND
 }
 
 enum TipoCredencial {

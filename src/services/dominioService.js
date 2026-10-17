@@ -36,7 +36,6 @@ const SELECT_DOMINIO_DETALHE = {
       sistemaInfraestrutura: {
         select: {
           ambiente: true,
-          componente: true,
           sistema: { select: { id: true, nome: true } },
         },
       },
@@ -68,7 +67,6 @@ function formatarSubdominio(subdominio, nomeDominio) {
     nomeCompleto: montarNomeCompleto(resto.nome, nomeDominio),
     sistema: sistemaInfraestrutura.sistema,
     ambiente: sistemaInfraestrutura.ambiente,
-    componente: sistemaInfraestrutura.componente,
   };
 }
 

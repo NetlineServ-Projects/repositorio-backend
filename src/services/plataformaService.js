@@ -43,7 +43,7 @@ const SELECT_INFRAESTRUTURAS_ARVORE = {
   select: {
     id: true,
     ambiente: true,
-    componente: true,
+
     url: true,
     sistema: {
       select: {
@@ -61,14 +61,13 @@ const SELECT_INFRAESTRUTURAS_ARVORE = {
       orderBy: { criadoEm: "asc" },
     },
   },
-  orderBy: [{ ambiente: "asc" }, { componente: "asc" }],
+  orderBy: [{ ambiente: "asc" }],
 };
 
 // A que sistema, ambiente e componente pertence um subdomínio
 const SELECT_ORIGEM_SUBDOMINIO = {
   select: {
     ambiente: true,
-    componente: true,
     sistema: { select: { id: true, nome: true } },
   },
 };

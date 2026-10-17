@@ -13,10 +13,9 @@ const TIPOS_COM_SERVIDORES = ["CLOUD_BASE_DADOS", "CONTAINERIZACAO"];
 const SELECT_SISTEMAS_HOSPEDADOS = {
   select: {
     ambiente: true,
-    componente: true,
     sistema: { select: { id: true, nome: true, status: true } },
   },
-  orderBy: [{ ambiente: "asc" }, { componente: "asc" }],
+  orderBy: [{ ambiente: "asc" }],
 };
 // Seleção pública: NUNCA inclui passwordCifrada nem ipHash.
 // O ipCifrado é lido só para ser desencriptado em formatar().

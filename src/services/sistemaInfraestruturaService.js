@@ -7,22 +7,24 @@ const atividadeService = require("./atividadeService");
 const { rotuloAmbiente } = require("../utils/fileHelper");
 const subdominioService = require("./subdominioService");
 
-const ROTULO_COMPONENTE = { FRONTEND: "frontend", BACKEND: "backend" };
+const TIPO_PLATAFORMA_GESTAO_DOMINIO = "GESTAO_DOMINIO";
+const TIPO_PLATAFORMA_CONTAINERIZACAO = "CONTAINERIZACAO";
+
 // ─── SELECT PÚBLICO DA INFRAESTRUTURA ────────────────────────────────────────
-// Nunca inclui campos encriptados na listagem — só no obter individual.
+// Nunca inclui campos encriptados na listagem, só no obter individual.
 
 const SELECT_INFRA_LISTA = {
   id: true,
   ambiente: true,
   url: true,
+  plataformaId: true,
+  plataforma: {
+    select: { id: true, nome: true, tipo: true, fornecedor: true, logotipo: true },
+  },
   servidorId: true,
   servidor: { select: { id: true, nome: true, hostname: true } },
-  plataformaId: true,
-  plataforma: { select: { id: true, nome: true, tipo: true } },
-  criadoEm: true,
-  atualizadoEm: true,
-  _count: { select: { credenciais: true } },
-    componente: true,
+  imagemId: true,
+  imagem: { select: { id: true, nome: true, tag: true } },
   subdominio: {
     select: {
       id: true,
@@ -32,13 +34,14 @@ const SELECT_INFRA_LISTA = {
       dominio: { select: { id: true, nome: true } },
     },
   },
+  criadoEm: true,
+  atualizadoEm: true,
+  _count: { select: { credenciais: true } },
 };
 
 // ─── HELPERS INTERNOS ────────────────────────────────────────────────────────
 
-/**
- * Confirma que o sistema existe e devolve id + nome (usado nas Atividades).
- */
+/** Confirma que o sistema existe e devolve id + nome (usado nas Atividades). */
 async function obterSistemaOuFalhar(sistemaId) {
   const sistema = await prisma.sistema.findUnique({
     where: { id: sistemaId },
@@ -90,55 +93,14 @@ function desencriptarOuFalhar(valorEncriptado, contexto) {
   }
 }
 
-function descreverLocal(ambiente, componente) {
-  return `${rotuloAmbiente(ambiente)}, ${ROTULO_COMPONENTE[componente]}`;
-}
-
 /**
- * Valida a regra de negócio: tem de ter servidorId OU plataformaId, nunca os dois
- * nem nenhum. É chamada no salvar para garantir a coerência do estado final.
- * (O Zod no PUT já valida o body, mas confirmamos também no service para segurança.)
+ * Regras da hospedagem do backend:
+ *   - a plataforma é obrigatória, existe, está ativa e não é de gestão de domínio;
+ *   - o servidor é opcional e tem de pertencer à plataforma escolhida;
+ *   - a imagem é opcional, só existe em plataformas de containerização e tem de
+ *     pertencer à plataforma escolhida.
  */
-function validarServidorOuPlataforma({ servidorId, plataformaId }) {
-  const temServidor   = servidorId   != null;
-  const temPlataforma = plataformaId != null;
-
-  if (!temServidor && !temPlataforma) {
-    throw new AppError(
-      MSG.SISTEMA.INFRA_SERVIDOR_OU_PLATAFORMA,
-      HTTP_STATUS.UNPROCESSABLE_ENTITY
-    );
-  }
-
-  if (temServidor && temPlataforma) {
-    throw new AppError(
-      MSG.SISTEMA.INFRA_NAO_AMBOS,
-      HTTP_STATUS.UNPROCESSABLE_ENTITY
-    );
-  }
-}
-
-/**
- * Confirma que o servidor existe (e pertence a uma plataforma com servidores).
- */
-async function garantirServidorExiste(servidorId) {
-  const servidor = await prisma.servidor.findUnique({
-    where: { id: servidorId },
-    select: { id: true },
-  });
-
-  if (!servidor) {
-    throw new AppError(MSG.SERVIDOR.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
-  }
-}
-
-/**
- * Confirma que a plataforma existe e é do tipo que pode receber sistemas directamente
- * (sem servidor próprio, ex: Vercel). Só plataformas sem servidores é que se ligam
- * directamente à infraestrutura.
- * Regra: GESTAO_DOMINIO não pode receber sistemas directamente.
- */
-async function garantirPlataformaParaSistema(plataformaId) {
+async function validarHospedagem({ plataformaId, servidorId, imagemId }) {
   const plataforma = await prisma.plataforma.findUnique({
     where: { id: plataformaId },
     select: { id: true, tipo: true, ativo: true },
@@ -148,21 +110,58 @@ async function garantirPlataformaParaSistema(plataformaId) {
     throw new AppError(MSG.PLATAFORMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
   }
 
-  if (plataforma.tipo === "GESTAO_DOMINIO") {
-    throw new AppError(
-      MSG.SISTEMA.INFRA_PLATAFORMA_INVALIDA,
-      HTTP_STATUS.CONFLICT
-    );
+  if (plataforma.tipo === TIPO_PLATAFORMA_GESTAO_DOMINIO) {
+    throw new AppError(MSG.SISTEMA.INFRA_PLATAFORMA_INVALIDA, HTTP_STATUS.CONFLICT);
   }
 
   if (!plataforma.ativo) {
     throw new AppError(MSG.SERVIDOR.PLATAFORMA_INATIVA, HTTP_STATUS.CONFLICT);
   }
+
+  if (servidorId !== null) {
+    const servidor = await prisma.servidor.findUnique({
+      where: { id: servidorId },
+      select: { id: true, plataformaId: true },
+    });
+
+    if (!servidor) {
+      throw new AppError(MSG.SERVIDOR.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (servidor.plataformaId !== plataformaId) {
+      throw new AppError(
+        MSG.SISTEMA.INFRA_SERVIDOR_FORA_DA_PLATAFORMA,
+        HTTP_STATUS.UNPROCESSABLE_ENTITY
+      );
+    }
+  }
+
+  if (imagemId !== null) {
+    if (plataforma.tipo !== TIPO_PLATAFORMA_CONTAINERIZACAO) {
+      throw new AppError(
+        MSG.SISTEMA.INFRA_IMAGEM_SO_CONTAINERIZACAO,
+        HTTP_STATUS.UNPROCESSABLE_ENTITY
+      );
+    }
+
+    const imagem = await prisma.imagemContainer.findUnique({
+      where: { id: imagemId },
+      select: { id: true, plataformaId: true },
+    });
+
+    if (!imagem) {
+      throw new AppError(MSG.SISTEMA.INFRA_IMAGEM_NAO_ENCONTRADA, HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (imagem.plataformaId !== plataformaId) {
+      throw new AppError(
+        MSG.SISTEMA.INFRA_IMAGEM_FORA_DA_PLATAFORMA,
+        HTTP_STATUS.UNPROCESSABLE_ENTITY
+      );
+    }
+  }
 }
 
-/**
- * Formata um registo de lista: substitui _count por totalCredenciais.
- */
 function formatarSubdominio(infraestrutura) {
   const { subdominio } = infraestrutura;
 
@@ -171,16 +170,21 @@ function formatarSubdominio(infraestrutura) {
     subdominio: subdominio
       ? {
           ...subdominio,
-          nomeCompleto: subdominioService.montarNomeCompleto(subdominio.nome, subdominio.dominio.nome),
+          nomeCompleto: subdominioService.montarNomeCompleto(
+            subdominio.nome,
+            subdominio.dominio.nome
+          ),
         }
       : null,
   };
 }
 
+/** Formata um registo de lista: substitui _count por totalCredenciais. */
 function formatarInfra(infraestrutura) {
   const { _count, ...resto } = formatarSubdominio(infraestrutura);
   return { ...resto, totalCredenciais: _count.credenciais };
 }
+
 // ─── FUNÇÕES PÚBLICAS ────────────────────────────────────────────────────────
 
 /**
@@ -191,36 +195,26 @@ async function listarInfraestruturas(sistemaId) {
   await obterSistemaOuFalhar(sistemaId);
 
   const infraestruturas = await prisma.sistemaInfraestrutura.findMany({
-    where:   { sistemaId },
-    select:  SELECT_INFRA_LISTA,
-    orderBy: [{ ambiente: "asc" }, { componente: "asc" }]
+    where: { sistemaId },
+    select: SELECT_INFRA_LISTA,
+    orderBy: { ambiente: "asc" },
   });
 
   return infraestruturas.map(formatarInfra);
 }
 
 /**
- * Cria ou actualiza a infraestrutura de UM ambiente (upsert por sistema + ambiente).
- *
- * Regra: tem de ter servidorId XOR plataformaId. O Zod valida o body (PUT completo),
- * e o service confirma a coerência antes de gravar.
+ * Cria ou atualiza a infraestrutura (backend) de UM ambiente: upsert por sistema + ambiente.
+ * O subdomínio segue a regra: omitido = não mexer | null = remover | objeto = criar/atualizar.
  */
-async function salvarInfraestrutura(sistemaId, ambiente, componente, dados, usuarioId) {
+async function salvarInfraestrutura(sistemaId, ambiente, dados, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
 
-  const { servidorId = null, plataformaId = null, url = null, subdominio } = dados;
+  const { plataformaId, servidorId = null, imagemId = null, url = null, subdominio } = dados;
 
-  validarServidorOuPlataforma({ servidorId, plataformaId });
+  await validarHospedagem({ plataformaId, servidorId, imagemId });
 
-  if (servidorId !== null) {
-    await garantirServidorExiste(servidorId);
-  } else {
-    await garantirPlataformaParaSistema(plataformaId);
-  }
-
-  const chaveInfraestrutura = {
-    sistemaId_ambiente_componente: { sistemaId, ambiente, componente },
-  };
+  const chaveInfraestrutura = { sistemaId_ambiente: { sistemaId, ambiente } };
 
   let estadoSubdominio = null;
 
@@ -238,8 +232,8 @@ async function salvarInfraestrutura(sistemaId, ambiente, componente, dados, usua
     return await prisma.$transaction(async (tx) => {
       const infraestrutura = await tx.sistemaInfraestrutura.upsert({
         where: chaveInfraestrutura,
-        update: { servidorId, plataformaId, url },
-        create: { sistemaId, ambiente, componente, servidorId, plataformaId, url },
+        update: { plataformaId, servidorId, imagemId, url },
+        create: { sistemaId, ambiente, plataformaId, servidorId, imagemId, url },
         select: { id: true },
       });
 
@@ -257,7 +251,7 @@ async function salvarInfraestrutura(sistemaId, ambiente, componente, dados, usua
 
       await atividadeService.registrar(tx, {
         usuarioId,
-        acao: `Atualizou infraestrutura (${descreverLocal(ambiente, componente)}) do sistema "${sistema.nome}"`,
+        acao: `Atualizou infraestrutura (${rotuloAmbiente(ambiente)}) do sistema "${sistema.nome}"`,
         sistemaId,
       });
 
@@ -274,17 +268,17 @@ async function salvarInfraestrutura(sistemaId, ambiente, componente, dados, usua
 }
 
 /**
- * Leitura completa de UM ambiente — inclui credenciais desencriptadas e url/servidor/plataforma.
+ * Leitura completa de UM ambiente: inclui as credenciais desencriptadas.
  * Só deve ser chamada por uma rota com reautenticação (token elevado).
  * Cada leitura fica auditada.
  */
-async function obterInfraestrutura(sistemaId, ambiente, componente, usuarioId) {
+async function obterInfraestrutura(sistemaId, ambiente, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
 
   const { _count, ...selectSemContagem } = SELECT_INFRA_LISTA;
 
   const infraestrutura = await prisma.sistemaInfraestrutura.findUnique({
-    where: { sistemaId_ambiente_componente: { sistemaId, ambiente, componente } },
+    where: { sistemaId_ambiente: { sistemaId, ambiente } },
     select: {
       ...selectSemContagem,
       credenciais: {
@@ -312,19 +306,19 @@ async function obterInfraestrutura(sistemaId, ambiente, componente, usuarioId) {
 
   await atividadeService.registrar(prisma, {
     usuarioId,
-    acao: `Visualizou infraestrutura (${descreverLocal(ambiente, componente)}) do sistema "${sistema.nome}"`,
+    acao: `Visualizou infraestrutura (${rotuloAmbiente(ambiente)}) do sistema "${sistema.nome}"`,
     sistemaId,
   });
 
   return resultado;
 }
 
-async function adicionarCredencial(sistemaId, ambiente, componente, { tipo, label, valor }, usuarioId) {
+async function adicionarCredencial(sistemaId, ambiente, { tipo, label, valor }, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
 
   return prisma.$transaction(async (tx) => {
     const infraestrutura = await tx.sistemaInfraestrutura.findUnique({
-      where: { sistemaId_ambiente_componente: { sistemaId, ambiente, componente } },
+      where: { sistemaId_ambiente: { sistemaId, ambiente } },
       select: { id: true },
     });
 
@@ -344,7 +338,7 @@ async function adicionarCredencial(sistemaId, ambiente, componente, { tipo, labe
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Adicionou credencial "${label}" (${tipo}) a ${descreverLocal(ambiente, componente)} do sistema "${sistema.nome}"`,
+      acao: `Adicionou credencial "${label}" (${tipo}) ao ambiente ${rotuloAmbiente(ambiente)} do sistema "${sistema.nome}"`,
       sistemaId,
     });
 
@@ -352,9 +346,10 @@ async function adicionarCredencial(sistemaId, ambiente, componente, { tipo, labe
   });
 }
 
-async function atualizarCredencial(sistemaId, ambiente, componente, credencialId, { tipo, label, valor }, usuarioId) {
+/** Atualiza campos de uma credencial. Todos são opcionais: só o que vier é alterado. */
+async function atualizarCredencial(sistemaId, ambiente, credencialId, { tipo, label, valor }, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
-  await obterCredencialOuFalhar(credencialId, sistemaId, ambiente, componente);
+  await obterCredencialOuFalhar(credencialId, sistemaId, ambiente);
 
   return prisma.$transaction(async (tx) => {
     const credencial = await tx.credencialSistema.update({
@@ -369,7 +364,7 @@ async function atualizarCredencial(sistemaId, ambiente, componente, credencialId
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Atualizou credencial "${credencial.label}" (${credencial.tipo}) de ${descreverLocal(ambiente, componente)} do sistema "${sistema.nome}"`,
+      acao: `Atualizou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${rotuloAmbiente(ambiente)} do sistema "${sistema.nome}"`,
       sistemaId: sistema.id,
     });
 
@@ -377,35 +372,19 @@ async function atualizarCredencial(sistemaId, ambiente, componente, credencialId
   });
 }
 
-async function apagarCredencial(sistemaId, ambiente, componente, credencialId, usuarioId) {
+async function apagarCredencial(sistemaId, ambiente, credencialId, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
-  const credencial = await obterCredencialOuFalhar(credencialId, sistemaId, ambiente, componente);
+  const credencial = await obterCredencialOuFalhar(credencialId, sistemaId, ambiente);
 
   return prisma.$transaction(async (tx) => {
     await tx.credencialSistema.delete({ where: { id: credencialId } });
 
     await atividadeService.registrar(tx, {
       usuarioId,
-      acao: `Apagou credencial "${credencial.label}" (${credencial.tipo}) de ${descreverLocal(ambiente, componente)} do sistema "${sistema.nome}"`,
+      acao: `Apagou credencial "${credencial.label}" (${credencial.tipo}) do ambiente ${rotuloAmbiente(ambiente)} do sistema "${sistema.nome}"`,
       sistemaId: sistema.id,
     });
   });
-}
-
-async function obterCredencialOuFalhar(credencialId, sistemaId, ambiente, componente) {
-  const credencial = await prisma.credencialSistema.findFirst({
-    where: {
-      id: credencialId,
-      sistemaInfraestrutura: { sistemaId, ambiente, componente },
-    },
-    select: { id: true, tipo: true, label: true },
-  });
-
-  if (!credencial) {
-    throw new AppError(MSG.SISTEMA.CREDENCIAL_NAO_ENCONTRADA, HTTP_STATUS.NOT_FOUND);
-  }
-
-  return credencial;
 }
 
 module.exports = {

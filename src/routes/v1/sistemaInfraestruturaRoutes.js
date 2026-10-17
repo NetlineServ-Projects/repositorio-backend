@@ -22,7 +22,7 @@ const {
 // com router.use(): um router.use() sem caminho correria para qualquer pedido
 // a /sistemas/* que chegasse aqui, e um 404 passaria a pedir reautenticação.
 //
-// Leitura: ADMIN e FUNCIONARIO — sessão válida → reautenticação recente
+// Leitura: ADMIN e FUNCIONARIO. Sessão válida e reautenticação recente
 // (token elevado, 3 min).
 const leitura = [authMiddleware, exigirReautenticacao];
 
@@ -30,16 +30,14 @@ const leitura = [authMiddleware, exigirReautenticacao];
 // para um FUNCIONARIO receber 403 logo, sem ter de introduzir a password.
 const escrita = [authMiddleware, authorize(ROLES.ADMIN), exigirReautenticacao];
 
-// Nas rotas abaixo, a validação vem depois da autenticação: quem não tem
-// sessão nem token elevado não recebe detalhes de validação.
+// A validação vem depois da autenticação: quem não tem sessão nem token
+// elevado não recebe detalhes de validação.
 //
-// Cada infraestrutura é identificada por sistema + ambiente + componente
-// (FRONTEND ou BACKEND).
+// A infraestrutura é só do backend: há uma por sistema e ambiente.
 
 // ── Leitura ──────────────────────────────────────────────────────────────
 
-// Infraestruturas já registadas do sistema, de todos os ambientes e
-// componentes (nada é desencriptado)
+// Infraestruturas já registadas do sistema, de todos os ambientes (nada é desencriptado)
 router.get(
   "/:sistemaId/infraestruturas",
   ...leitura,
@@ -47,9 +45,9 @@ router.get(
   sistemaInfraestruturaController.listar
 );
 
-// Infraestrutura de um ambiente e componente, desencriptada e auditada
+// Infraestrutura de um ambiente, desencriptada e auditada
 router.get(
-  "/:sistemaId/infraestruturas/:ambiente/:componente",
+  "/:sistemaId/infraestruturas/:ambiente",
   ...leitura,
   validate(infraestruturaParamsSchema, "params"),
   sistemaInfraestruturaController.obter
@@ -57,10 +55,10 @@ router.get(
 
 // ── Escrita ──────────────────────────────────────────────────────────────
 
-// Cria ou atualiza a infraestrutura de um ambiente e componente (upsert),
-// incluindo o subdomínio, se vier no corpo do pedido
+// Cria ou atualiza a infraestrutura de um ambiente (upsert), incluindo o
+// subdomínio, se vier no corpo do pedido
 router.put(
-  "/:sistemaId/infraestruturas/:ambiente/:componente",
+  "/:sistemaId/infraestruturas/:ambiente",
   ...escrita,
   validate(infraestruturaParamsSchema, "params"),
   validate(salvarInfraestruturaSchema),
@@ -68,7 +66,7 @@ router.put(
 );
 
 router.post(
-  "/:sistemaId/infraestruturas/:ambiente/:componente/credenciais",
+  "/:sistemaId/infraestruturas/:ambiente/credenciais",
   ...escrita,
   validate(infraestruturaParamsSchema, "params"),
   validate(credencialSchema),
@@ -76,7 +74,7 @@ router.post(
 );
 
 router.patch(
-  "/:sistemaId/infraestruturas/:ambiente/:componente/credenciais/:credencialId",
+  "/:sistemaId/infraestruturas/:ambiente/credenciais/:credencialId",
   ...escrita,
   validate(credencialParamsSchema, "params"),
   validate(credencialUpdateSchema),
@@ -84,7 +82,7 @@ router.patch(
 );
 
 router.delete(
-  "/:sistemaId/infraestruturas/:ambiente/:componente/credenciais/:credencialId",
+  "/:sistemaId/infraestruturas/:ambiente/credenciais/:credencialId",
   ...escrita,
   validate(credencialParamsSchema, "params"),
   sistemaInfraestruturaController.apagarCredencial

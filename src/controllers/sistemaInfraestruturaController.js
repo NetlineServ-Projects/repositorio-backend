@@ -19,8 +19,8 @@ exports.listar = async (req, res, next) => {
 
 exports.obter = async (req, res, next) => {
     try {
-        const { sistemaId, ambiente, componente } = req.params;
-        const infraestrutura = await service.obterInfraestrutura(sistemaId, ambiente, componente, req.user.id);
+        const { sistemaId, ambiente } = req.params;
+        const infraestrutura = await service.obterInfraestrutura(sistemaId, ambiente, req.user.id);
 
         return response.success(
             res,
@@ -35,8 +35,8 @@ exports.obter = async (req, res, next) => {
 
 exports.salvar = async (req, res, next) => {
     try {
-        const { sistemaId, ambiente, componente } = req.params;
-        const resultado = await service.salvarInfraestrutura(sistemaId, ambiente, componente, req.body, req.user.id);
+        const { sistemaId, ambiente } = req.params;
+        const resultado = await service.salvarInfraestrutura(sistemaId, ambiente, req.body, req.user.id);
 
         return response.success(res, MSG.SISTEMA.INFRAESTRUTURA_ATUALIZADA, resultado, HTTP.OK);
     } catch (error) {
@@ -46,8 +46,8 @@ exports.salvar = async (req, res, next) => {
 
 exports.adicionarCredencial = async (req, res, next) => {
     try {
-        const { sistemaId, ambiente, componente } = req.params;
-        const credencial = await service.adicionarCredencial(sistemaId, ambiente, componente, req.body, req.user.id);
+        const { sistemaId, ambiente } = req.params;
+        const credencial = await service.adicionarCredencial(sistemaId, ambiente, req.body, req.user.id);
 
         return response.success(res, MSG.SISTEMA.CREDENCIAL_ADICIONADA, credencial, HTTP.CREATED);
     } catch (error) {
@@ -57,8 +57,8 @@ exports.adicionarCredencial = async (req, res, next) => {
 
 exports.atualizarCredencial = async (req, res, next) => {
     try {
-        const { sistemaId, ambiente, componente, credencialId } = req.params;
-        const credencial = await service.atualizarCredencial(sistemaId, ambiente, componente, credencialId, req.body, req.user.id);
+        const { sistemaId, ambiente, credencialId } = req.params;
+        const credencial = await service.atualizarCredencial(sistemaId, ambiente, credencialId, req.body, req.user.id);
 
         return response.success(res, MSG.SISTEMA.CREDENCIAL_ATUALIZADA, credencial, HTTP.OK);
     } catch (error) {
@@ -68,8 +68,8 @@ exports.atualizarCredencial = async (req, res, next) => {
 
 exports.apagarCredencial = async (req, res, next) => {
     try {
-        const { sistemaId, ambiente, componente, credencialId } = req.params;
-        await service.apagarCredencial(sistemaId, ambiente, componente, credencialId, req.user.id);
+        const { sistemaId, ambiente, credencialId } = req.params;
+        await service.apagarCredencial(sistemaId, ambiente, credencialId, req.user.id);
 
         return response.success(res, MSG.SISTEMA.CREDENCIAL_APAGADA, null, HTTP.OK);
     } catch (error) {

@@ -4,11 +4,16 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { parseId } = require("../utils/fileHelper");
 const atividadeService = require("./atividadeService");
-const { montarNomeCompleto } = require("./subdominioService");
 
+const TIPO_PLATAFORMA_GESTAO_DOMINIO = "GESTAO_DOMINIO";
 
 // ─── SELECT EXPLÍCITO ────────────────────────────────────────────────────────
 // Evita expor campos internos ou futuros acidentalmente.
+
+// Plataforma onde está hospedado o frontend (ex: Vercel). Só dados de identificação.
+const SELECT_PLATAFORMA_FRONTEND = {
+    select: { id: true, nome: true, fornecedor: true, logotipo: true },
+};
 
 const SELECT_SISTEMA_LISTA = {
     id: true,
@@ -25,6 +30,9 @@ const SELECT_SISTEMA_LISTA = {
     tecnologiasInfraestrutura: true,
     repositorioUrl: true,
     urlProducao: true,
+    urlTestes: true,
+    plataformaFrontendId: true,
+    plataformaFrontend: SELECT_PLATAFORMA_FRONTEND,
     responsavelTecnico: true,
     versaoAtual: true,
     ativo: true,
@@ -47,6 +55,9 @@ const SELECT_SISTEMA_DETALHE = {
     tecnologiasInfraestrutura: true,
     repositorioUrl: true,
     urlProducao: true,
+    urlTestes: true,
+    plataformaFrontendId: true,
+    plataformaFrontend: SELECT_PLATAFORMA_FRONTEND,
     responsavelTecnico: true,
     versaoAtual: true,
     ativo: true,
@@ -63,21 +74,6 @@ const SELECT_SISTEMA_DETALHE = {
         where: { apagadoEm: null },
         orderBy: { dataSubmissao: "desc" },
         take: 50,
-    },
-    // Só o subdomínio do frontend de cada ambiente: é o endereço que as pessoas abrem.
-    // Nunca se envia o tipo nem o valor do registo DNS.
-    infraestruturas: {
-        where: { componente: "FRONTEND", subdominio: { isNot: null } },
-        select: {
-            ambiente: true,
-            subdominio: {
-                select: {
-                    nome: true,
-                    dominio: { select: { nome: true } },
-                },
-            },
-        },
-        orderBy: { ambiente: "asc" }, // Produção primeiro, depois Testes
     },
 };
 
@@ -98,18 +94,11 @@ function mapearStatus(status) {
 }
 
 /**
- * Converte os subdomínios do frontend nas URLs finais de cada ambiente.
- */
-function montarUrlsAmbientes(infraestruturas) {
-    return infraestruturas.map(({ ambiente, subdominio }) => ({
-        ambiente,
-        url: `https://${montarNomeCompleto(subdominio.nome, subdominio.dominio.nome)}`,
-    }));
-}
-
-/**
  * Constrói o objecto de dados normalizado para criar/actualizar um sistema.
  * Centraliza aqui toda a lógica de normalização para não repetir nos dois sítios.
+ *
+ * urlTestes e plataformaFrontendId só entram quando vêm no pedido: assim, uma
+ * edição que não os envia não apaga os valores que já existem. Enviar null remove-os.
  */
 function montarDadosSistema(dados) {
     return {
@@ -126,6 +115,10 @@ function montarDadosSistema(dados) {
         tecnologiasInfraestrutura: dados.tecnologiasInfraestrutura ?? [],
         repositorioUrl: dados.repositorioUrl ?? null,
         urlProducao: dados.urlProducao ?? null,
+        ...(dados.urlTestes !== undefined && { urlTestes: dados.urlTestes }),
+        ...(dados.plataformaFrontendId !== undefined && {
+            plataformaFrontendId: dados.plataformaFrontendId,
+        }),
         responsavelTecnico: dados.responsavelTecnico ?? null,
         versaoAtual: dados.versaoAtual ?? null,
         ativo: dados.ativo !== undefined ? dados.ativo : true,
@@ -133,7 +126,28 @@ function montarDadosSistema(dados) {
 }
 
 /**
- * Formata um registo de lista — adiciona totalDocumentos e remove _count.
+ * Confirma que a plataforma do frontend existe e não é de gestão de domínio.
+ * Sem plataforma (undefined ou null) não há nada a validar.
+ */
+async function garantirPlataformaDoFrontend(plataformaId) {
+    if (plataformaId === undefined || plataformaId === null) return;
+
+    const plataforma = await prisma.plataforma.findUnique({
+        where: { id: plataformaId },
+        select: { id: true, tipo: true },
+    });
+
+    if (!plataforma) {
+        throw new AppError(MSG.PLATAFORMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    }
+
+    if (plataforma.tipo === TIPO_PLATAFORMA_GESTAO_DOMINIO) {
+        throw new AppError(MSG.SISTEMA.INFRA_PLATAFORMA_INVALIDA, HTTP_STATUS.CONFLICT);
+    }
+}
+
+/**
+ * Formata um registo de lista: adiciona totalDocumentos e remove _count.
  */
 function formatar(sistema) {
     const { _count, ...resto } = sistema;
@@ -149,7 +163,7 @@ function resolverUsuarioId(usuarioAtual) {
     return parseId(usuarioAtual.id, MSG.VALIDATION.INVALID_ID);
 }
 
-// ─── FUNÇÕES PÚBLICAS (exports funcionais — padrão do projecto) ──────────────
+// ─── FUNÇÕES PÚBLICAS (exports funcionais, padrão do projecto) ──────────────
 
 async function listarTodos() {
     const sistemas = await prisma.sistema.findMany({
@@ -172,17 +186,14 @@ async function obterPorId(id) {
         throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
-    const { infraestruturas, ...resto } = sistema;
-
-    return {
-        ...resto,
-        urlsAmbientes: montarUrlsAmbientes(infraestruturas),
-    };
+    return sistema;
 }
 
 // usuarioAtual precisa de { id } (vem de req.user no controller)
 async function criar(dados, usuarioAtual) {
     const usuarioId = resolverUsuarioId(usuarioAtual);
+
+    await garantirPlataformaDoFrontend(dados.plataformaFrontendId);
 
     return prisma.$transaction(async (tx) => {
         const novoSistema = await tx.sistema.create({
@@ -205,6 +216,8 @@ async function criar(dados, usuarioAtual) {
 async function atualizar(id, dados, usuarioAtual) {
     const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
     const usuarioId = resolverUsuarioId(usuarioAtual);
+
+    await garantirPlataformaDoFrontend(dados.plataformaFrontendId);
 
     return prisma.$transaction(async (tx) => {
         const sistemaExiste = await tx.sistema.findUnique({
@@ -251,7 +264,7 @@ async function apagar(id, usuarioAtual) {
         await tx.sistema.delete({ where: { id: idNum } });
 
         if (usuarioId) {
-            // sistemaId fica de fora — o sistema já não existe depois do delete,
+            // sistemaId fica de fora: o sistema já não existe depois do delete,
             // por isso o nome vai directamente no texto da acção.
             await atividadeService.registrar(tx, {
                 usuarioId,

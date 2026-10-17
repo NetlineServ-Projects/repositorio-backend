@@ -2,8 +2,6 @@ const { z } = require("zod");
 const { subdominioDaInfraestruturaSchema } = require("./subdominioValidator");
 
 const AMBIENTES = ["PRODUCAO", "TESTES"];
-const COMPONENTES = ["FRONTEND", "BACKEND"];
-
 
 const TIPOS_CREDENCIAL = [
   "ENV_VARIAVEIS",
@@ -32,13 +30,8 @@ const idSchema = z.coerce
   .positive("Identificador inválido.");
 
 const ambienteSchema = z.enum(AMBIENTES, {
-  error: "Ambiente inválido. Use PRODUCAO ou TESTES .",
+  error: "Ambiente inválido. Use PRODUCAO ou TESTES.",
 });
-
-const componenteSchema = z.enum(COMPONENTES, {
-  error: "Componente inválido. Use FRONTEND ou BACKEND.",
-});
-
 
 // /sistemas/:sistemaId/infraestruturas
 const sistemaIdParamsSchema = z.object({
@@ -49,7 +42,6 @@ const sistemaIdParamsSchema = z.object({
 const infraestruturaParamsSchema = z.object({
   sistemaId: idSchema,
   ambiente: ambienteSchema,
-  componente: componenteSchema,
 });
 
 // /sistemas/:sistemaId/infraestruturas/:ambiente/credenciais/:credencialId
@@ -58,60 +50,54 @@ const credencialParamsSchema = infraestruturaParamsSchema.extend({
 });
 
 // ---------------------------------------------------------------------------
-// Body — salvarInfraestrutura (PUT /:sistemaId/infraestruturas/:ambiente)
+// Body: salvarInfraestrutura (PUT /:sistemaId/infraestruturas/:ambiente)
 // ---------------------------------------------------------------------------
 //
-// Regra de negócio: tem de ter servidorId OU plataformaId, nunca os dois e
-// nunca nenhum. Esta validação estrutural é feita aqui no Zod; a validação
-// de existência (o servidor/plataforma realmente existe) fica no service.
-//
-// Num PATCH parcial a regra é verificada no service sobre o estado final
-// (o que veio + o que já existia). Aqui usamos PUT (substitui tudo), por isso
-// a coerência pode ser verificada directamente no schema.
+// A plataforma é obrigatória. O servidor e a imagem são opcionais. As regras que
+// dependem da base de dados (o servidor pertence à plataforma, a imagem só existe
+// em plataformas de containerização) são verificadas no service.
 
-const salvarInfraestruturaSchema = z
-  .object({
-        // undefined = não mexer no subdomínio | null = remover | objeto = criar/atualizar
-    subdominio: subdominioDaInfraestruturaSchema.nullable().optional(),
-    servidorId: z
-      .number({ error: "O servidor deve ser um número." })
-      .int("O servidor é inválido.")
-      .positive("O servidor é inválido.")
-      .max(INT_MAX, "O servidor é inválido.")
-      .nullable()
-      .optional(),
+const plataformaIdSchema = z
+  .number({ error: "A plataforma é obrigatória e deve ser um número." })
+  .int("A plataforma é inválida.")
+  .positive("A plataforma é inválida.")
+  .max(INT_MAX, "A plataforma é inválida.");
 
-    plataformaId: z
-      .number({ error: "A plataforma deve ser um número." })
-      .int("A plataforma é inválida.")
-      .positive("A plataforma é inválida.")
-      .max(INT_MAX, "A plataforma é inválida.")
-      .nullable()
-      .optional(),
+const servidorIdSchema = z
+  .number({ error: "O servidor deve ser um número." })
+  .int("O servidor é inválido.")
+  .positive("O servidor é inválido.")
+  .max(INT_MAX, "O servidor é inválido.")
+  .nullable()
+  .optional();
 
-    url: z
-      .string({ error: "O URL deve ser texto." })
-      .trim()
-      .url("O URL é inválido.")
-      .max(255, "O URL não pode ter mais de 255 caracteres.")
-      .nullable()
-      .optional(),
-  })
-  .refine(
-    (dados) => {
-      const temServidor   = dados.servidorId   != null;
-      const temPlataforma = dados.plataformaId != null;
-      // Exactamente um dos dois deve estar presente (XOR lógico)
-      return temServidor !== temPlataforma;
-    },
-    {
-      error:
-        "Indique um servidor (servidorId) OU uma plataforma (plataformaId) — nunca os dois nem nenhum.",
-    }
-  );
+const imagemIdSchema = z
+  .number({ error: "A imagem deve ser um número." })
+  .int("A imagem é inválida.")
+  .positive("A imagem é inválida.")
+  .max(INT_MAX, "A imagem é inválida.")
+  .nullable()
+  .optional();
+
+const salvarInfraestruturaSchema = z.object({
+  plataformaId: plataformaIdSchema,
+  servidorId: servidorIdSchema,
+  imagemId: imagemIdSchema,
+
+  url: z
+    .string({ error: "O URL deve ser texto." })
+    .trim()
+    .url("O URL é inválido.")
+    .max(255, "O URL não pode ter mais de 255 caracteres.")
+    .nullable()
+    .optional(),
+
+  // undefined = não mexer no subdomínio | null = remover | objeto = criar/atualizar
+  subdominio: subdominioDaInfraestruturaSchema.nullable().optional(),
+});
 
 // ---------------------------------------------------------------------------
-// Body — credenciais
+// Body: credenciais
 // ---------------------------------------------------------------------------
 
 const credencialSchema = z.object({
@@ -125,9 +111,8 @@ const credencialSchema = z.object({
 
 const credencialUpdateSchema = credencialSchema.partial().refine(
   (dados) => Object.keys(dados).length > 0,
-  { error: "Indique pelo menos um campo para actualizar." }
+  { error: "Indique pelo menos um campo para atualizar." }
 );
-
 
 module.exports = {
   AMBIENTES,
@@ -139,5 +124,4 @@ module.exports = {
   salvarInfraestruturaSchema,
   credencialSchema,
   credencialUpdateSchema,
-  componenteSchema,
 };

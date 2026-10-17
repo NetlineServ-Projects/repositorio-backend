@@ -55,6 +55,12 @@ module.exports = {
         INFRA_SERVIDOR_OU_PLATAFORMA: "Provide a server (servidorId) OR a platform (plataformaId) — never both and never neither.",
         INFRA_NAO_AMBOS: "A server and a platform cannot be associated at the same time. Choose only one.",
         INFRA_PLATAFORMA_INVALIDA: "Domain management platforms cannot host systems directly.",
+        INFRA_SERVIDOR_FORA_DA_PLATAFORMA: "The selected server does not belong to this platform.",
+        INFRA_IMAGEM_NAO_ENCONTRADA: "Image not found.",
+        INFRA_IMAGEM_SO_CONTAINERIZACAO: "Only containerization platforms have images.",
+        INFRA_IMAGEM_FORA_DA_PLATAFORMA: "The selected image does not belong to this platform.",
+        INFRA_IMAGEM_NAO_CONTAINERIZACAO: "Only containerization platforms can have images associated.",
+
     },
     PLATAFORMA: {
         CREATED: "Platform created successfully.",

@@ -55,6 +55,11 @@ module.exports = {
         INFRA_SERVIDOR_OU_PLATAFORMA: "Indique um servidor (servidorId) OU uma plataforma (plataformaId) — nunca os dois nem nenhum.",
         INFRA_NAO_AMBOS: "Não é possível associar um servidor e uma plataforma em simultâneo. Escolha apenas um.",
         INFRA_PLATAFORMA_INVALIDA: "Plataformas do tipo Gestão de domínio não podem receber sistemas directamente.",
+        INFRA_SERVIDOR_FORA_DA_PLATAFORMA: "O servidor escolhido não pertence a esta plataforma.",
+        INFRA_IMAGEM_NAO_ENCONTRADA: "Imagem não encontrada.",
+        INFRA_IMAGEM_SO_CONTAINERIZACAO: "Só as plataformas de containerização têm imagens.",
+        INFRA_IMAGEM_FORA_DA_PLATAFORMA: "A imagem escolhida não pertence a esta plataforma.",
+        INFRA_IMAGEM_NAO_CONTAINERIZACAO: "Só é possível associar imagens a plataformas de containerização.",
     },
 
     PLATAFORMA: {

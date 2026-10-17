@@ -1,6 +1,5 @@
 const { z } = require("zod");
 
-
 const createSistemaSchema = z.object({
     nome: z.string().trim().min(2, "O nome do sistema é obrigatório."),
     desenvolvedores: z.array(z.string()).min(1, "Informe pelo menos um desenvolvedor."),
@@ -11,20 +10,27 @@ const createSistemaSchema = z.object({
     dataEntrega: z.coerce.date().optional(),
     status: z.enum(["Em Produção", "Em Desenvolvimento", "Manutenção"]).optional(),
     tecnologiasFrontend: z.array(z.string()).optional(),
-    tecnologiasBackend: z.array(z.string()).optional(), 
+    tecnologiasBackend: z.array(z.string()).optional(),
     tecnologiasInfraestrutura: z.array(z.string()).optional(),
     repositorioUrl: z.url("URL do repositório inválida.").optional(),
     urlProducao: z.url("URL de produção inválida.").optional(),
+    // null remove o valor; omitido mantém o que já existe
+    urlTestes: z.url("URL de testes inválida.").nullable().optional(),
+    plataformaFrontendId: z
+        .number({ error: "A plataforma do frontend deve ser um número." })
+        .int("A plataforma do frontend é inválida.")
+        .positive("A plataforma do frontend é inválida.")
+        .nullable()
+        .optional(),
     responsavelTecnico: z.string().trim().optional(),
     versaoAtual: z.string().trim().optional(),
-    ativo: z.boolean().optional()
+    ativo: z.boolean().optional(),
 });
 
 // Deriva o schema do PATCH tornando todos os campos opcionais
 const updateSistemaSchema = createSistemaSchema.partial();
 
-
 module.exports = {
     createSistemaSchema,
-    updateSistemaSchema
+    updateSistemaSchema,
 };

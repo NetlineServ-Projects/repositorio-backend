@@ -9,7 +9,6 @@ const { subdominioIdParamsSchema } = require("../../validators/subdominioValidat
 
 // Só leitura, para qualquer utilizador autenticado. Os subdomínios são criados,
 // editados e removidos pelo registo de infraestrutura do sistema
-// (PUT /sistemas/:sistemaId/infraestruturas/:ambiente/:componente).
 router.get("/", authMiddleware, subdominioController.listar);
 
 router.get(
