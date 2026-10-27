@@ -1,5 +1,4 @@
 const { z } = require("zod");
-const { subdominioDaInfraestruturaSchema } = require("./subdominioValidator");
 
 const AMBIENTES = ["PRODUCAO", "TESTES"];
 
@@ -92,8 +91,6 @@ const salvarInfraestruturaSchema = z.object({
     .nullable()
     .optional(),
 
-  // undefined = não mexer no subdomínio | null = remover | objeto = criar/atualizar
-  subdominio: subdominioDaInfraestruturaSchema.nullable().optional(),
 });
 
 // ---------------------------------------------------------------------------

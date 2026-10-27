@@ -39,6 +39,10 @@ module.exports = {
         NOT_FOUND: "Categoria não encontrada."
     },
 
+    NOTIFICACAO: {
+        NOT_FOUND: "Notificação não encontrada.",
+    },
+
     SISTEMA: {
         CREATED: "Sistema criado com sucesso.",
         UPDATED: "Sistema atualizado com sucesso.",
@@ -54,12 +58,14 @@ module.exports = {
         INFRA_NAO_ENCONTRADA: "Este ambiente ainda não tem infraestrutura registada. Crie-a primeiro.",
         INFRA_SERVIDOR_OU_PLATAFORMA: "Indique um servidor (servidorId) OU uma plataforma (plataformaId) — nunca os dois nem nenhum.",
         INFRA_NAO_AMBOS: "Não é possível associar um servidor e uma plataforma em simultâneo. Escolha apenas um.",
-        INFRA_PLATAFORMA_INVALIDA: "Plataformas do tipo Gestão de domínio não podem receber sistemas directamente.",
+        FRONTEND_PLATAFORMA_INVALIDA: "O frontend só pode estar alojado numa plataforma Cloud/Base de dados (ex: Vercel).",
+        INFRA_PLATAFORMA_INVALIDA: "Os backends só podem correr em plataformas Cloud/Base de dados (os registos de imagens e a gestão de domínio não executam sistemas).",
         INFRA_SERVIDOR_FORA_DA_PLATAFORMA: "O servidor escolhido não pertence a esta plataforma.",
         INFRA_IMAGEM_NAO_ENCONTRADA: "Imagem não encontrada.",
         INFRA_IMAGEM_SO_CONTAINERIZACAO: "Só as plataformas de containerização têm imagens.",
         INFRA_IMAGEM_FORA_DA_PLATAFORMA: "A imagem escolhida não pertence a esta plataforma.",
         INFRA_IMAGEM_NAO_CONTAINERIZACAO: "Só é possível associar imagens a plataformas de containerização.",
+        SEM_PERMISSAO: "Só quem criou o sistema (ou um administrador) o pode editar ou eliminar.",
     },
 
     PLATAFORMA: {
@@ -91,7 +97,7 @@ module.exports = {
         LISTADOS: "Servidores obtidos com sucesso.",
         NOT_FOUND: "Servidor não encontrado.",
         IP_JA_EXISTE: "Já existe um servidor com este IP nesta plataforma.",
-        PLATAFORMA_INVALIDA: "Só é possível registar servidores em plataformas do tipo Cloud/Base de dados ou Containerização.",
+        PLATAFORMA_INVALIDA: "Só é possível registar servidores em plataformas do tipo Cloud/Base de dados.",
         PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
         TEM_DEPENDENCIAS: "Não é possível apagar o servidor: ainda tem subdomínios ou sistemas associados.",
         PASSWORD_OBTIDA: "Password do servidor obtida com sucesso.",

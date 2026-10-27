@@ -15,6 +15,7 @@ const healthRoutes = require("./healthRoutes");
 const dominioRoutes = require("./dominioRoutes");
 const subdominioRoutes = require("./subdominioRoutes");
 const imagemRoutes = require("./imagemRoutes");
+const notificacaoRoutes = require("./notificacaoRoutes");
 
 router.use("/atividades", atividadeRoutes);
 
@@ -41,5 +42,7 @@ router.use("/dominios", dominioRoutes);
 router.use("/subdominios", subdominioRoutes);
 
 router.use("/imagens", imagemRoutes);
+
+router.use("/notificacoes", notificacaoRoutes);
 
 module.exports = router;

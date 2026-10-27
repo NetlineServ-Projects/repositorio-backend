@@ -4,8 +4,20 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { parseId } = require("../utils/fileHelper");
 const atividadeService = require("./atividadeService");
+const {
+    montarNomeCompleto,
+    prepararSubdominiosDoSistema,
+    gravarSubdominiosDoSistema,
+} = require("./subdominioService");
 
-const TIPO_PLATAFORMA_GESTAO_DOMINIO = "GESTAO_DOMINIO";
+const ROLES = require("../constants/roles");
+
+// O frontend, como o backend, só pode estar alojado numa plataforma Cloud (ex: Vercel)
+const TIPO_PLATAFORMA_CLOUD = "CLOUD_BASE_DADOS";
+const AMBIENTES = ["PRODUCAO", "TESTES"];
+
+// Quem criou o sistema (só identificação)
+const SELECT_CRIADOR = { select: { id: true, nome: true } };
 
 // ─── SELECT EXPLÍCITO ────────────────────────────────────────────────────────
 // Evita expor campos internos ou futuros acidentalmente.
@@ -13,6 +25,21 @@ const TIPO_PLATAFORMA_GESTAO_DOMINIO = "GESTAO_DOMINIO";
 // Plataforma onde está hospedado o frontend (ex: Vercel). Só dados de identificação.
 const SELECT_PLATAFORMA_FRONTEND = {
     select: { id: true, nome: true, fornecedor: true, logotipo: true },
+};
+
+// Endereço público do sistema em cada ambiente (no máximo um por ambiente)
+const SELECT_SUBDOMINIOS_DO_SISTEMA = {
+    select: {
+        id: true,
+        ambiente: true,
+        nome: true,
+        tipoDns: true,
+        destino: true,
+        dominioId: true,
+        servidorId: true,
+        dominio: { select: { id: true, nome: true } },
+    },
+    orderBy: { ambiente: "asc" },
 };
 
 const SELECT_SISTEMA_LISTA = {
@@ -33,10 +60,13 @@ const SELECT_SISTEMA_LISTA = {
     urlTestes: true,
     plataformaFrontendId: true,
     plataformaFrontend: SELECT_PLATAFORMA_FRONTEND,
+    subdominios: SELECT_SUBDOMINIOS_DO_SISTEMA,
     responsavelTecnico: true,
     versaoAtual: true,
     ativo: true,
     dataCriacao: true,
+    criadoPorId: true,
+    criadoPor: SELECT_CRIADOR,
     _count: { select: { documentos: true } },
 };
 
@@ -58,10 +88,13 @@ const SELECT_SISTEMA_DETALHE = {
     urlTestes: true,
     plataformaFrontendId: true,
     plataformaFrontend: SELECT_PLATAFORMA_FRONTEND,
+    subdominios: SELECT_SUBDOMINIOS_DO_SISTEMA,
     responsavelTecnico: true,
     versaoAtual: true,
     ativo: true,
     dataCriacao: true,
+    criadoPorId: true,
+    criadoPor: SELECT_CRIADOR,
     documentos: {
         select: {
             id: true,
@@ -99,6 +132,7 @@ function mapearStatus(status) {
  *
  * urlTestes e plataformaFrontendId só entram quando vêm no pedido: assim, uma
  * edição que não os envia não apaga os valores que já existem. Enviar null remove-os.
+ * Os subdomínios não são colunas do sistema: tratam-se à parte.
  */
 function montarDadosSistema(dados) {
     return {
@@ -141,19 +175,42 @@ async function garantirPlataformaDoFrontend(plataformaId) {
         throw new AppError(MSG.PLATAFORMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
-    if (plataforma.tipo === TIPO_PLATAFORMA_GESTAO_DOMINIO) {
-        throw new AppError(MSG.SISTEMA.INFRA_PLATAFORMA_INVALIDA, HTTP_STATUS.CONFLICT);
+    if (plataforma.tipo !== TIPO_PLATAFORMA_CLOUD) {
+        throw new AppError(MSG.SISTEMA.FRONTEND_PLATAFORMA_INVALIDA, HTTP_STATUS.CONFLICT);
     }
 }
 
 /**
- * Formata um registo de lista: adiciona totalDocumentos e remove _count.
+ * Endereço de cada ambiente: o subdomínio registado tem prioridade;
+ * sem ele, usa-se o URL escrito à mão (urlProducao / urlTestes).
+ */
+function montarUrlsAmbientes(subdominios, urlProducao, urlTestes) {
+    const manual = { PRODUCAO: urlProducao, TESTES: urlTestes };
+
+    return AMBIENTES.map((ambiente) => {
+        const subdominio = subdominios.find((s) => s.ambiente === ambiente);
+        const url = subdominio ? `https://${subdominio.nomeCompleto}` : manual[ambiente];
+        return url ? { ambiente, url } : null;
+    }).filter(Boolean);
+}
+
+/**
+ * Formata um sistema: adiciona o nome completo dos subdomínios, os endereços
+ * calculados e (nas listas) o totalDocumentos, e remove _count.
  */
 function formatar(sistema) {
-    const { _count, ...resto } = sistema;
+    const { _count, subdominios = [], ...resto } = sistema;
+
+    const subdominiosComNome = subdominios.map((s) => ({
+        ...s,
+        nomeCompleto: montarNomeCompleto(s.nome, s.dominio.nome),
+    }));
+
     return {
         ...resto,
-        totalDocumentos: _count?.documentos ?? 0,
+        ...(_count && { totalDocumentos: _count.documentos }),
+        subdominios: subdominiosComNome,
+        urlsAmbientes: montarUrlsAmbientes(subdominiosComNome, resto.urlProducao, resto.urlTestes),
     };
 }
 
@@ -161,6 +218,16 @@ function formatar(sistema) {
 function resolverUsuarioId(usuarioAtual) {
     if (!usuarioAtual) return null;
     return parseId(usuarioAtual.id, MSG.VALIDATION.INVALID_ID);
+}
+
+/**
+ * Só quem criou o sistema o pode editar ou eliminar. Um ADMIN pode sempre,
+ * para gerir os sistemas sem criador (antigos, ou de utilizadores eliminados).
+ */
+function garantirPodeGerir(sistema, usuarioAtual) {
+    if (usuarioAtual?.perfil === ROLES.ADMIN) return;
+    if (sistema.criadoPorId !== null && sistema.criadoPorId === usuarioAtual?.id) return;
+    throw new AppError(MSG.SISTEMA.SEM_PERMISSAO, HTTP_STATUS.FORBIDDEN);
 }
 
 // ─── FUNÇÕES PÚBLICAS (exports funcionais, padrão do projecto) ──────────────
@@ -186,7 +253,7 @@ async function obterPorId(id) {
         throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
     }
 
-    return sistema;
+    return formatar(sistema);
 }
 
 // usuarioAtual precisa de { id } (vem de req.user no controller)
@@ -194,10 +261,19 @@ async function criar(dados, usuarioAtual) {
     const usuarioId = resolverUsuarioId(usuarioAtual);
 
     await garantirPlataformaDoFrontend(dados.plataformaFrontendId);
+    const subdominios = await prepararSubdominiosDoSistema(null, dados.subdominios);
 
     return prisma.$transaction(async (tx) => {
-        const novoSistema = await tx.sistema.create({
-            data: montarDadosSistema(dados),
+        const criado = await tx.sistema.create({
+            data: { ...montarDadosSistema(dados), criadoPorId: usuarioId },
+            select: { id: true },
+        });
+
+        await gravarSubdominiosDoSistema(tx, criado.id, subdominios);
+
+        // Lê depois de gravar, para a resposta já trazer os subdomínios
+        const novoSistema = await tx.sistema.findUnique({
+            where: { id: criado.id },
             select: SELECT_SISTEMA_LISTA,
         });
 
@@ -218,20 +294,29 @@ async function atualizar(id, dados, usuarioAtual) {
     const usuarioId = resolverUsuarioId(usuarioAtual);
 
     await garantirPlataformaDoFrontend(dados.plataformaFrontendId);
+    const subdominios = await prepararSubdominiosDoSistema(idNum, dados.subdominios);
 
     return prisma.$transaction(async (tx) => {
         const sistemaExiste = await tx.sistema.findUnique({
             where: { id: idNum },
-            select: { id: true, nome: true },
+            select: { id: true, nome: true, criadoPorId: true },
         });
 
         if (!sistemaExiste) {
             throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
         }
+        garantirPodeGerir(sistemaExiste, usuarioAtual);
 
-        const sistemaAtualizado = await tx.sistema.update({
+        await tx.sistema.update({
             where: { id: idNum },
             data: montarDadosSistema(dados),
+            select: { id: true },
+        });
+
+        await gravarSubdominiosDoSistema(tx, idNum, subdominios);
+
+        const sistemaAtualizado = await tx.sistema.findUnique({
+            where: { id: idNum },
             select: SELECT_SISTEMA_LISTA,
         });
 
@@ -254,13 +339,15 @@ async function apagar(id, usuarioAtual) {
     return prisma.$transaction(async (tx) => {
         const sistemaExiste = await tx.sistema.findUnique({
             where: { id: idNum },
-            select: { id: true, nome: true },
+            select: { id: true, nome: true, criadoPorId: true },
         });
 
         if (!sistemaExiste) {
             throw new AppError(MSG.SISTEMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
         }
+        garantirPodeGerir(sistemaExiste, usuarioAtual);
 
+        // Os subdomínios, a infraestrutura e as credenciais saem em cascata
         await tx.sistema.delete({ where: { id: idNum } });
 
         if (usuarioId) {

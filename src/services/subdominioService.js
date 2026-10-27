@@ -2,10 +2,11 @@ const prisma = require("../config/prisma");
 const AppError = require("../utils/AppError");
 const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
-const atividadeService = require("./atividadeService");
 
 // Só estes tipos apontam para um servidor; todos os outros guardam o valor em "destino"
 const TIPOS_COM_SERVIDOR = ["A", "AAAA"];
+
+const AMBIENTES = ["PRODUCAO", "TESTES"];
 
 const NOME_RAIZ = "@";
 
@@ -23,6 +24,9 @@ const SELECT_SUBDOMINIO = {
   dominio: { select: { id: true, nome: true } },
   servidorId: true,
   servidor: { select: { id: true, nome: true, hostname: true } },
+  sistemaId: true,
+  ambiente: true,
+  sistema: { select: { id: true, nome: true } },
   criadoEm: true,
   atualizadoEm: true,
 };
@@ -64,8 +68,19 @@ async function obterDominioOuFalhar(dominioId) {
   return dominio;
 }
 
+async function garantirServidorExiste(servidorId) {
+  const servidor = await prisma.servidor.findUnique({
+    where: { id: servidorId },
+    select: { id: true },
+  });
+
+  if (!servidor) {
+    throw new AppError(MSG.SERVIDOR.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+  }
+}
+
 /**
- * Valida o ESTADO FINAL do registo (num PATCH, já misturado com o que existia):
+ * Valida o ESTADO FINAL do registo:
  *   A / AAAA        → servidorId obrigatório, sem destino
  *   todos os outros → destino obrigatório, sem servidorId
  */
@@ -139,6 +154,8 @@ function tratarRegistoDuplicado(erro) {
   throw erro;
 }
 
+// ─── Leitura (a página de Domínios mostra-os só para leitura) ────────────────
+
 async function listarSubdominios() {
   const subdominios = await prisma.subdominio.findMany({
     select: SELECT_SUBDOMINIO,
@@ -152,36 +169,102 @@ async function obterSubdominio(id) {
   return formatar(await obterSubdominioOuFalhar(id));
 }
 
+// ─── Subdomínios de um sistema (um por ambiente) ─────────────────────────────
 
-
-// Monta o registo DNS a partir do que o formulário do sistema envia.
-// A / AAAA apontam para o servidor da infraestrutura; os restantes usam "destino".
-function montarEstadoDaInfraestrutura(subdominio, servidorId) {
-  const apontaParaServidor = TIPOS_COM_SERVIDOR.includes(subdominio.tipoDns);
+/** A / AAAA apontam para o servidor; os restantes usam o destino. */
+function montarEstado(pedido) {
+  const usaServidor = TIPOS_COM_SERVIDOR.includes(pedido.tipoDns);
 
   return {
-    dominioId: subdominio.dominioId,
-    nome: subdominio.nome,
-    tipoDns: subdominio.tipoDns,
-    servidorId: apontaParaServidor ? servidorId : null,
-    destino: apontaParaServidor ? null : (subdominio.destino ?? null),
+    dominioId: pedido.dominioId,
+    nome: pedido.nome,
+    tipoDns: pedido.tipoDns,
+    servidorId: usaServidor ? (pedido.servidorId ?? null) : null,
+    destino: usaServidor ? null : (pedido.destino ?? null),
   };
 }
 
-// ignorarId = id do subdomínio que esta infraestrutura já tem (se existir)
-async function validarParaInfraestrutura(estado, ignorarId) {
-  await obterDominioOuFalhar(estado.dominioId);
-  validarCoerencia(estado);
-  await garantirRegistoLivre(estado, ignorarId);
-  await garantirSemConflitoCname(estado, ignorarId);
+/**
+ * Valida os subdomínios que vieram no pedido de um sistema e devolve o que há a gravar,
+ * só com os ambientes enviados:
+ *   ambiente omitido = não mexer | null = remover | objeto = criar ou atualizar.
+ * sistemaId é null quando o sistema ainda não existe (criação).
+ */
+async function prepararSubdominiosDoSistema(sistemaId, subdominios) {
+  const preparados = {};
+
+  if (!subdominios) {
+    return preparados;
+  }
+
+  for (const ambiente of AMBIENTES) {
+    const pedido = subdominios[ambiente];
+
+    if (pedido === undefined) {
+      continue;
+    }
+
+    if (pedido === null) {
+      preparados[ambiente] = null;
+      continue;
+    }
+
+    const estado = montarEstado(pedido);
+
+    await obterDominioOuFalhar(estado.dominioId);
+
+    if (estado.servidorId !== null) {
+      await garantirServidorExiste(estado.servidorId);
+    }
+
+    validarCoerencia(estado);
+
+    const existente = sistemaId
+      ? await prisma.subdominio.findUnique({
+          where: { sistemaId_ambiente: { sistemaId, ambiente } },
+          select: { id: true },
+        })
+      : null;
+
+    await garantirRegistoLivre(estado, existente?.id);
+    await garantirSemConflitoCname(estado, existente?.id);
+
+    preparados[ambiente] = estado;
+  }
+
+  return preparados;
+}
+
+/** Grava o resultado de prepararSubdominiosDoSistema dentro da transação do sistema. */
+async function gravarSubdominiosDoSistema(tx, sistemaId, preparados) {
+  try {
+    for (const ambiente of AMBIENTES) {
+      if (!(ambiente in preparados)) {
+        continue;
+      }
+
+      const estado = preparados[ambiente];
+
+      if (estado === null) {
+        await tx.subdominio.deleteMany({ where: { sistemaId, ambiente } });
+        continue;
+      }
+
+      await tx.subdominio.upsert({
+        where: { sistemaId_ambiente: { sistemaId, ambiente } },
+        update: estado,
+        create: { ...estado, sistemaId, ambiente },
+      });
+    }
+  } catch (erro) {
+    tratarRegistoDuplicado(erro);
+  }
 }
 
 module.exports = {
   listarSubdominios,
   obterSubdominio,
-  montarEstadoDaInfraestrutura,
-  validarParaInfraestrutura,
-  tratarRegistoDuplicado,
   montarNomeCompleto,
-
-};
+  prepararSubdominiosDoSistema,
+  gravarSubdominiosDoSistema,
+}; 

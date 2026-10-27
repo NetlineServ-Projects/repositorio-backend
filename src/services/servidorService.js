@@ -6,8 +6,9 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const { encriptar, desencriptar, hashIp } = require("../utils/crypto");
 const atividadeService = require("./atividadeService");
 
-// Só estes tipos de plataforma podem ter servidores
-const TIPOS_COM_SERVIDORES = ["CLOUD_BASE_DADOS", "CONTAINERIZACAO"];
+// Só a Cloud/Base de dados aloja servidores. Containerização (Docker Hub, GHCR...) é um
+// registo de imagens e Gestão de domínio só tem DNS: nenhum dos dois corre máquinas.
+const TIPOS_COM_SERVIDORES = ["CLOUD_BASE_DADOS"];
 
 // Sistemas hospedados neste servidor, um registo por ambiente e componente
 const SELECT_SISTEMAS_HOSPEDADOS = {
@@ -36,13 +37,23 @@ const SELECT_SERVIDOR = {
   versaoSo: true,
   cloud: true,
   regiao: true,
+  estado: true,
   plataformaId: true,
   plataforma: { select: { id: true, nome: true, tipo: true } },
   criadoEm: true,
   atualizadoEm: true,
   _count: { select: { subdominios: true, infraestruturas: true } },
   infraestruturas: SELECT_SISTEMAS_HOSPEDADOS,
-  _count: { select: { subdominios: true, infraestruturas: true } },
+  // Sistemas cujo endereço (registo A/AAAA) aponta para este servidor
+  subdominios: {
+    select: {
+      ambiente: true,
+      nome: true,
+      dominio: { select: { nome: true } },
+      sistema: { select: { id: true, nome: true, status: true } },
+    },
+    orderBy: [{ ambiente: "asc" }],
+  },
 };
 
 // Uso interno (validações): acrescenta o ipHash, que nunca sai deste ficheiro
@@ -83,15 +94,27 @@ function normalizarIp(ip) {
 
 /** Devolve o servidor pronto para a resposta: IP legível, sem campos internos. */
 function formatar(servidor) {
-  const { ipCifrado, ipHash, _count, infraestruturas, ...resto } = servidor;
+  const { ipCifrado, ipHash, _count, infraestruturas, subdominios, ...resto } = servidor;
+
+  // Um sistema está hospedado aqui se o backend foi associado ao servidor (infraestrutura)
+  // ou se o seu endereço (registo DNS A/AAAA) aponta para ele. Um registo por origem e ambiente.
+  const sistemasHospedados = [
+    ...infraestruturas.map((i) => ({ ...i, origem: "BACKEND" })),
+    ...subdominios.map((s) => ({
+      ambiente: s.ambiente,
+      sistema: s.sistema,
+      origem: "DNS",
+      endereco: s.nome === "@" ? s.dominio.nome : `${s.nome}.${s.dominio.nome}`,
+    })),
+  ];
 
   return {
     ...resto,
     ip: desencriptarOuFalhar(ipCifrado, "o IP do servidor"),
-    sistemasHospedados: infraestruturas,
+    sistemasHospedados,
     totais: {
       subdominios: _count.subdominios,
-      sistemas: new Set(infraestruturas.map((i) => i.sistema.id)).size,
+      sistemas: new Set(sistemasHospedados.map((h) => h.sistema.id)).size,
     },
   };
 }

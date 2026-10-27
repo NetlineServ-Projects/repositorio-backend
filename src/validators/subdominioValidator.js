@@ -52,41 +52,21 @@ const dominioIdSchema = z
   .positive("O domínio é inválido.")
   .max(INT_MAX, "O domínio é inválido.");
 
-// A coerência entre tipoDns, servidorId e destino é verificada no service,
-// porque num PATCH depende também do registo já existente.
-const campos = {
+// O endereço público de um sistema num ambiente. A coerência entre tipoDns,
+// servidorId e destino é verificada no service.
+const subdominioDoSistemaSchema = z.object({
   dominioId: dominioIdSchema,
   nome: nomeSchema,
   tipoDns: tipoDnsSchema,
   servidorId: servidorIdSchema,
   destino: destinoSchema,
-};
-
-const criarSubdominioSchema = z.object(campos);
-
-const atualizarSubdominioSchema = z
-  .object(campos)
-  .partial()
-  .refine((dados) => Object.keys(dados).length > 0, {
-    error: "Indique pelo menos um campo para atualizar.",
-  });
+});
 
 const subdominioIdParamsSchema = z.object({
   id: z.coerce.number({ error: "ID inválido." }).int("ID inválido.").positive("ID inválido."),
 });
 
-// Subdomínio registado dentro do formulário do sistema (o servidor vem da infraestrutura)
-const subdominioDaInfraestruturaSchema = z.object({
-  dominioId: dominioIdSchema,
-  nome: nomeSchema,
-  tipoDns: tipoDnsSchema,
-  destino: destinoSchema,
-});
-
-
 module.exports = {
-  criarSubdominioSchema,
-  atualizarSubdominioSchema,
+  subdominioDoSistemaSchema,
   subdominioIdParamsSchema,
-  subdominioDaInfraestruturaSchema,
 };

@@ -33,12 +33,8 @@ const SELECT_DOMINIO_DETALHE = {
       tipoDns: true,
       destino: true,
       servidor: { select: { id: true, nome: true, hostname: true } },
-      sistemaInfraestrutura: {
-        select: {
-          ambiente: true,
-          sistema: { select: { id: true, nome: true } },
-        },
-      },
+      ambiente: true,
+      sistema: { select: { id: true, nome: true } },
     },
     orderBy: [{ nome: "asc" }, { tipoDns: "asc" }],
   },
@@ -60,13 +56,9 @@ function calcularDiasParaExpirar(dataExpiracao) {
 }
 
 function formatarSubdominio(subdominio, nomeDominio) {
-  const { sistemaInfraestrutura, ...resto } = subdominio;
-
   return {
-    ...resto,
-    nomeCompleto: montarNomeCompleto(resto.nome, nomeDominio),
-    sistema: sistemaInfraestrutura.sistema,
-    ambiente: sistemaInfraestrutura.ambiente,
+    ...subdominio,
+    nomeCompleto: montarNomeCompleto(subdominio.nome, nomeDominio),
   };
 }
 
@@ -193,6 +185,11 @@ async function atualizarDominio(id, dados, usuarioId) {
         select: SELECT_DOMINIO,
       });
 
+      // Renovado (ou com outra data): os avisos de expiração antigos deixam de valer
+      if (atualizado.dataExpiracao.getTime() !== atual.dataExpiracao.getTime()) {
+        await tx.notificacao.deleteMany({ where: { dominioId: id } });
+      }
+
       await atividadeService.registrar(tx, {
         usuarioId,
         acao: `Atualizou o domínio "${atualizado.nome}"`,
@@ -230,4 +227,5 @@ module.exports = {
   criarDominio,
   atualizarDominio,
   apagarDominio,
+  calcularDiasParaExpirar,
 };

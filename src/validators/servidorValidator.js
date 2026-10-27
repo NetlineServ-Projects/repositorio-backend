@@ -72,6 +72,8 @@ const campos = {
   cloud: textoOpcional("A cloud", 255),
   regiao: textoOpcional("A região", 100),
   plataformaId: inteiroPositivo("A plataforma"),
+  // Sem default aqui, pelo mesmo motivo das unidades: o default (INATIVO) vem do Prisma
+  estado: z.enum(["ATIVO", "INATIVO"], { error: "Estado inválido (ATIVO ou INATIVO)." }).optional(),
 };
 
 const criarServidorSchema = z.object(campos);

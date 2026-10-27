@@ -39,6 +39,10 @@ module.exports = {
         NOT_FOUND: "Category not found."
     },
 
+    NOTIFICACAO: {
+        NOT_FOUND: "Notification not found.",
+    },
+
     SISTEMA: {
         CREATED: "System created successfully.",
         UPDATED: "System updated successfully.",
@@ -54,12 +58,14 @@ module.exports = {
         INFRA_NAO_ENCONTRADA: "This environment does not have infrastructure registered yet. Please create it first.",
         INFRA_SERVIDOR_OU_PLATAFORMA: "Provide a server (servidorId) OR a platform (plataformaId) — never both and never neither.",
         INFRA_NAO_AMBOS: "A server and a platform cannot be associated at the same time. Choose only one.",
-        INFRA_PLATAFORMA_INVALIDA: "Domain management platforms cannot host systems directly.",
+        FRONTEND_PLATAFORMA_INVALIDA: "The frontend can only be hosted on a Cloud/Database platform (e.g. Vercel).",
+        INFRA_PLATAFORMA_INVALIDA: "Backends can only run on Cloud/Database platforms (image registries and domain management do not run systems).",
         INFRA_SERVIDOR_FORA_DA_PLATAFORMA: "The selected server does not belong to this platform.",
         INFRA_IMAGEM_NAO_ENCONTRADA: "Image not found.",
         INFRA_IMAGEM_SO_CONTAINERIZACAO: "Only containerization platforms have images.",
         INFRA_IMAGEM_FORA_DA_PLATAFORMA: "The selected image does not belong to this platform.",
         INFRA_IMAGEM_NAO_CONTAINERIZACAO: "Only containerization platforms can have images associated.",
+        SEM_PERMISSAO: "Only the user who created this system (or an administrator) can edit or delete it.",
 
     },
     PLATAFORMA: {
@@ -91,7 +97,7 @@ module.exports = {
         LISTADOS: "Servers retrieved successfully.",
         NOT_FOUND: "Server not found.",
         IP_JA_EXISTE: "A server with this IP already exists on this platform.",
-        PLATAFORMA_INVALIDA: "Servers can only be registered on Cloud/Database or Containerization platforms.",
+        PLATAFORMA_INVALIDA: "Servers can only be registered on Cloud/Database platforms.",
         PLATAFORMA_INATIVA: "The selected platform is inactive.",
         TEM_DEPENDENCIAS: "The server cannot be deleted: it still has subdomains or systems linked to it.",
         PASSWORD_OBTIDA: "Server password retrieved successfully.",

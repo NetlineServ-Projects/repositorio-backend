@@ -5,10 +5,9 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const { encriptar, desencriptar } = require("../utils/crypto");
 const atividadeService = require("./atividadeService");
 const { rotuloAmbiente } = require("../utils/fileHelper");
-const subdominioService = require("./subdominioService");
 
-const TIPO_PLATAFORMA_GESTAO_DOMINIO = "GESTAO_DOMINIO";
-const TIPO_PLATAFORMA_CONTAINERIZACAO = "CONTAINERIZACAO";
+// Só a Cloud executa backends; a imagem pode vir de qualquer registo (containerização)
+const TIPO_PLATAFORMA_CLOUD = "CLOUD_BASE_DADOS";
 
 // ─── SELECT PÚBLICO DA INFRAESTRUTURA ────────────────────────────────────────
 // Nunca inclui campos encriptados na listagem, só no obter individual.
@@ -24,16 +23,7 @@ const SELECT_INFRA_LISTA = {
   servidorId: true,
   servidor: { select: { id: true, nome: true, hostname: true } },
   imagemId: true,
-  imagem: { select: { id: true, nome: true, tag: true } },
-  subdominio: {
-    select: {
-      id: true,
-      nome: true,
-      tipoDns: true,
-      destino: true,
-      dominio: { select: { id: true, nome: true } },
-    },
-  },
+  imagem: { select: { id: true, nome: true, tag: true, plataforma: { select: { id: true, nome: true } } } },
   criadoEm: true,
   atualizadoEm: true,
   _count: { select: { credenciais: true } },
@@ -94,11 +84,12 @@ function desencriptarOuFalhar(valorEncriptado, contexto) {
 }
 
 /**
- * Regras da hospedagem do backend:
- *   - a plataforma é obrigatória, existe, está ativa e não é de gestão de domínio;
- *   - o servidor é opcional e tem de pertencer à plataforma escolhida;
- *   - a imagem é opcional, só existe em plataformas de containerização e tem de
- *     pertencer à plataforma escolhida.
+ * Regras da hospedagem do backend — "onde corre" separado de "de onde vem a imagem":
+ *   - a plataforma (onde corre) é obrigatória, existe, está ativa e é Cloud/Base de dados:
+ *     registos de imagens (containerização) e gestão de domínio não executam nada;
+ *   - o servidor é opcional e tem de pertencer a essa plataforma;
+ *   - a imagem é opcional e pode vir de qualquer registo (ex: corre num servidor da
+ *     Hetzner a partir de uma imagem guardada no GHCR).
  */
 async function validarHospedagem({ plataformaId, servidorId, imagemId }) {
   const plataforma = await prisma.plataforma.findUnique({
@@ -110,7 +101,7 @@ async function validarHospedagem({ plataformaId, servidorId, imagemId }) {
     throw new AppError(MSG.PLATAFORMA.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
   }
 
-  if (plataforma.tipo === TIPO_PLATAFORMA_GESTAO_DOMINIO) {
+  if (plataforma.tipo !== TIPO_PLATAFORMA_CLOUD) {
     throw new AppError(MSG.SISTEMA.INFRA_PLATAFORMA_INVALIDA, HTTP_STATUS.CONFLICT);
   }
 
@@ -137,51 +128,20 @@ async function validarHospedagem({ plataformaId, servidorId, imagemId }) {
   }
 
   if (imagemId !== null) {
-    if (plataforma.tipo !== TIPO_PLATAFORMA_CONTAINERIZACAO) {
-      throw new AppError(
-        MSG.SISTEMA.INFRA_IMAGEM_SO_CONTAINERIZACAO,
-        HTTP_STATUS.UNPROCESSABLE_ENTITY
-      );
-    }
-
     const imagem = await prisma.imagemContainer.findUnique({
       where: { id: imagemId },
-      select: { id: true, plataformaId: true },
+      select: { id: true },
     });
 
     if (!imagem) {
       throw new AppError(MSG.SISTEMA.INFRA_IMAGEM_NAO_ENCONTRADA, HTTP_STATUS.NOT_FOUND);
     }
-
-    if (imagem.plataformaId !== plataformaId) {
-      throw new AppError(
-        MSG.SISTEMA.INFRA_IMAGEM_FORA_DA_PLATAFORMA,
-        HTTP_STATUS.UNPROCESSABLE_ENTITY
-      );
-    }
   }
-}
-
-function formatarSubdominio(infraestrutura) {
-  const { subdominio } = infraestrutura;
-
-  return {
-    ...infraestrutura,
-    subdominio: subdominio
-      ? {
-          ...subdominio,
-          nomeCompleto: subdominioService.montarNomeCompleto(
-            subdominio.nome,
-            subdominio.dominio.nome
-          ),
-        }
-      : null,
-  };
 }
 
 /** Formata um registo de lista: substitui _count por totalCredenciais. */
 function formatarInfra(infraestrutura) {
-  const { _count, ...resto } = formatarSubdominio(infraestrutura);
+  const { _count, ...resto } = infraestrutura;
   return { ...resto, totalCredenciais: _count.credenciais };
 }
 
@@ -203,68 +163,30 @@ async function listarInfraestruturas(sistemaId) {
   return infraestruturas.map(formatarInfra);
 }
 
-/**
- * Cria ou atualiza a infraestrutura (backend) de UM ambiente: upsert por sistema + ambiente.
- * O subdomínio segue a regra: omitido = não mexer | null = remover | objeto = criar/atualizar.
- */
+/** Cria ou atualiza a infraestrutura (backend) de UM ambiente: upsert por sistema + ambiente. */
 async function salvarInfraestrutura(sistemaId, ambiente, dados, usuarioId) {
   const sistema = await obterSistemaOuFalhar(sistemaId);
 
-  const { plataformaId, servidorId = null, imagemId = null, url = null, subdominio } = dados;
+  const { plataformaId, servidorId = null, imagemId = null, url = null } = dados;
 
   await validarHospedagem({ plataformaId, servidorId, imagemId });
 
-  const chaveInfraestrutura = { sistemaId_ambiente: { sistemaId, ambiente } };
-
-  let estadoSubdominio = null;
-
-  if (subdominio) {
-    const existente = await prisma.sistemaInfraestrutura.findUnique({
-      where: chaveInfraestrutura,
-      select: { subdominio: { select: { id: true } } },
+  return prisma.$transaction(async (tx) => {
+    const infraestrutura = await tx.sistemaInfraestrutura.upsert({
+      where: { sistemaId_ambiente: { sistemaId, ambiente } },
+      update: { plataformaId, servidorId, imagemId, url },
+      create: { sistemaId, ambiente, plataformaId, servidorId, imagemId, url },
+      select: SELECT_INFRA_LISTA,
     });
 
-    estadoSubdominio = subdominioService.montarEstadoDaInfraestrutura(subdominio, servidorId);
-    await subdominioService.validarParaInfraestrutura(estadoSubdominio, existente?.subdominio?.id);
-  }
-
-  try {
-    return await prisma.$transaction(async (tx) => {
-      const infraestrutura = await tx.sistemaInfraestrutura.upsert({
-        where: chaveInfraestrutura,
-        update: { plataformaId, servidorId, imagemId, url },
-        create: { sistemaId, ambiente, plataformaId, servidorId, imagemId, url },
-        select: { id: true },
-      });
-
-      if (subdominio) {
-        await tx.subdominio.upsert({
-          where: { sistemaInfraestruturaId: infraestrutura.id },
-          update: estadoSubdominio,
-          create: { ...estadoSubdominio, sistemaInfraestruturaId: infraestrutura.id },
-        });
-      } else if (subdominio === null) {
-        await tx.subdominio.deleteMany({
-          where: { sistemaInfraestruturaId: infraestrutura.id },
-        });
-      }
-
-      await atividadeService.registrar(tx, {
-        usuarioId,
-        acao: `Atualizou infraestrutura (${rotuloAmbiente(ambiente)}) do sistema "${sistema.nome}"`,
-        sistemaId,
-      });
-
-      const completa = await tx.sistemaInfraestrutura.findUnique({
-        where: { id: infraestrutura.id },
-        select: SELECT_INFRA_LISTA,
-      });
-
-      return formatarInfra(completa);
+    await atividadeService.registrar(tx, {
+      usuarioId,
+      acao: `Atualizou infraestrutura (${rotuloAmbiente(ambiente)}) do sistema "${sistema.nome}"`,
+      sistemaId,
     });
-  } catch (erro) {
-    return subdominioService.tratarRegistoDuplicado(erro);
-  }
+
+    return formatarInfra(infraestrutura);
+  });
 }
 
 /**
@@ -295,7 +217,7 @@ async function obterInfraestrutura(sistemaId, ambiente, usuarioId) {
   const { credenciais, ...dadosInfraestrutura } = infraestrutura;
 
   const resultado = {
-    ...formatarSubdominio(dadosInfraestrutura),
+    ...dadosInfraestrutura,
     credenciais: credenciais.map((c) => ({
       id: c.id,
       tipo: c.tipo,

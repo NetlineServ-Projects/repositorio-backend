@@ -3,12 +3,10 @@ const router = Router();
 
 const sistemaController = require("../../controllers/sistemasController");
 const authMiddleware = require("../../middlewares/authMiddleware");
-const authorize = require("../../middlewares/roleMiddleware");
 const validate = require("../../validators/validate");
 
 const { createSistemaSchema } = require("../../validators/sistemaValidator");
 const { updateSistemaSchema } = require("../../validators/sistemaValidator");
-const ROLES = require("../../constants/roles");
 
 // Listar sistemas (qualquer utilizador autenticado)
 router.get("/", authMiddleware, sistemaController.listar);
@@ -30,10 +28,10 @@ router.patch(
   sistemaController.atualizar
 );
 
+// Editar e eliminar: só quem criou o sistema ou um ADMIN (verificado no service)
 router.delete(
   "/:id",
   authMiddleware,
-  authorize(ROLES.ADMIN),
   sistemaController.apagar
 );
 

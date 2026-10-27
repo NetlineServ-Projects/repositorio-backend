@@ -34,7 +34,7 @@ exports.criarDocumento = async (req, res, next) => {
 exports.listarDocumentos = async (req, res, next) => {
   try {
     const apenasLixeira = req.query.lixeira === "true";
-    const documentos = await documentoService.listarDocumentos(req.user.perfil, apenasLixeira);
+    const documentos = await documentoService.listarDocumentos(req.user, apenasLixeira);
     return response.success(res, null, documentos, HTTP.OK);
   } catch (error) {
     next(error);
@@ -44,7 +44,7 @@ exports.listarDocumentos = async (req, res, next) => {
 exports.buscarDocumentoPorId = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const documento = await documentoService.buscarDocumentoPorId(id, req.user.perfil);
+        const documento = await documentoService.buscarDocumentoPorId(id, req.user);
         return response.success(res, null, documento, HTTP.OK);
     } catch (error) {
         next(error);

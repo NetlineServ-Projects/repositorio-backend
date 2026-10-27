@@ -20,6 +20,8 @@ const LIMPAR_CAMPOS_CONTAINERIZACAO = { registryUrl: null, namespace: null };
 
 // Nunca devolve nada sensível: a plataforma só tem dados de identificação
 // Nunca devolve nada sensível: o token só sai pela rota protegida com reautenticação
+const SELECT_SISTEMA_RESUMO = { id: true, nome: true, status: true };
+
 const SELECT_PLATAFORMA = {
   id: true,
   nome: true,
@@ -35,6 +37,24 @@ const SELECT_PLATAFORMA = {
   criadoEm: true,
   atualizadoEm: true,
   _count: { select: { dominios: true, servidores: true, infraestruturas: true, imagens: true } },
+  // Para montar "sistemasHospedados" e os totais em formatar (não saem tal como estão)
+  infraestruturas: {
+    select: {
+      ambiente: true,
+      sistema: { select: SELECT_SISTEMA_RESUMO },
+      servidor: { select: { nome: true } },
+      imagem: { select: { nome: true, tag: true } },
+    },
+  },
+  // Num registo (containerização): os backends que correm a partir das suas imagens
+  imagens: {
+    select: {
+      nome: true,
+      tag: true,
+      infraestruturas: { select: { ambiente: true, sistema: { select: SELECT_SISTEMA_RESUMO } } },
+    },
+  },
+  sistemasFrontend: { select: SELECT_SISTEMA_RESUMO },
 };
 
 // Registos de infraestrutura (ambiente + componente) com o sistema e os
@@ -64,13 +84,7 @@ const SELECT_INFRAESTRUTURAS_ARVORE = {
   orderBy: [{ ambiente: "asc" }],
 };
 
-// A que sistema, ambiente e componente pertence um subdomínio
-const SELECT_ORIGEM_SUBDOMINIO = {
-  select: {
-    ambiente: true,
-    sistema: { select: { id: true, nome: true } },
-  },
-};
+
 // ─── ESTRUTURA COMPLETA DA ÁRVORE ─────────────────────────────────────────────
 // Hierarquia: Plataforma → Domínio → Subdomínio → Servidor → Sistema → Credenciais
 // Notas de segurança:
@@ -103,7 +117,8 @@ const SELECT_ARVORE = {
           nome: true,
           tipoDns: true,
           destino: true,
-          sistemaInfraestrutura: SELECT_ORIGEM_SUBDOMINIO,
+          ambiente: true,
+          sistema: { select: { id: true, nome: true } },
           servidorId: true,
           servidor: {
             select: {
@@ -158,7 +173,8 @@ const SELECT_ARVORE = {
           nome: true,
           tipoDns: true,
           destino: true,
-          sistemaInfraestrutura: SELECT_ORIGEM_SUBDOMINIO,
+          ambiente: true,
+          sistema: { select: { id: true, nome: true } },
           dominio: {
             select: { id: true, nome: true },
           },
@@ -262,15 +278,41 @@ function formatarArvore(plataforma) {
   };
 }
 
+// Sistemas distintos que usam a plataforma: frontend alojado nela, backend a correr nela
+// (Cloud) ou backend a correr a partir de uma imagem guardada nela (registo).
+// Um sistema com Produção e Testes aparece uma vez, com uma entrada por ambiente.
+function listarSistemasHospedados({ infraestruturas = [], imagens = [], sistemasFrontend = [] }) {
+  const porId = new Map();
+  const obter = (sistema) => {
+    if (!porId.has(sistema.id)) porId.set(sistema.id, { ...sistema, frontend: false, backend: [] });
+    return porId.get(sistema.id);
+  };
+
+  for (const sistema of sistemasFrontend) obter(sistema).frontend = true;
+  const nomeImagem = (imagem) => (imagem ? `${imagem.nome}:${imagem.tag}` : null);
+  for (const { ambiente, sistema, servidor, imagem } of infraestruturas) {
+    obter(sistema).backend.push({ ambiente, servidor: servidor?.nome ?? null, imagem: nomeImagem(imagem), viaImagem: false });
+  }
+  for (const imagem of imagens) {
+    for (const { ambiente, sistema } of imagem.infraestruturas) {
+      obter(sistema).backend.push({ ambiente, servidor: null, imagem: nomeImagem(imagem), viaImagem: true });
+    }
+  }
+
+  return [...porId.values()].sort((a, b) => a.nome.localeCompare(b.nome));
+}
+
 function formatar(plataforma) {
-  const { _count, tokenCifrado, ...resto } = plataforma;
+  const { _count, tokenCifrado, infraestruturas, imagens, sistemasFrontend, ...resto } = plataforma;
+  const sistemasHospedados = listarSistemasHospedados({ infraestruturas, imagens, sistemasFrontend });
   return {
     ...resto,
     temToken: Boolean(tokenCifrado),
+    sistemasHospedados,
     totais: {
       dominios: _count?.dominios ?? 0,
       servidores: _count?.servidores ?? 0,
-      sistemas: _count?.infraestruturas ?? 0,
+      sistemas: sistemasHospedados.length,
       imagens: _count?.imagens ?? 0,
     },
   };
@@ -309,17 +351,18 @@ function tratarNomeDuplicado(erro) {
 }
 
 /**
- * Servidores e sistemas só existem em CLOUD_BASE_DADOS / CONTAINERIZACAO;
- * domínios só existem em GESTAO_DOMINIO. Mudar o tipo não pode deixar
- * registos num tipo que não os admite.
+ * Servidores e backends de sistemas só existem em CLOUD_BASE_DADOS, imagens só em
+ * CONTAINERIZACAO e domínios só em GESTAO_DOMINIO.
+ * Mudar o tipo não pode deixar registos num tipo que não os admite.
  */
 function verificarMudancaDeTipo(atual, novoTipo) {
   const { dominios, servidores, infraestruturas, imagens } = atual._count;
 
   const incompativel =
-    novoTipo === TIPO_GESTAO_DOMINIO
-      ? servidores > 0 || infraestruturas > 0 || imagens > 0
-      : dominios > 0;
+    (novoTipo !== TIPO_GESTAO_DOMINIO && dominios > 0) ||
+    (novoTipo !== "CLOUD_BASE_DADOS" && servidores > 0) ||
+    (novoTipo !== "CONTAINERIZACAO" && imagens > 0) ||
+    (novoTipo !== "CLOUD_BASE_DADOS" && infraestruturas > 0);
 
   if (incompativel) {
     throw new AppError(MSG.PLATAFORMA.TIPO_INCOMPATIVEL, HTTP_STATUS.CONFLICT);

@@ -24,8 +24,10 @@ model Usuario {
   notificacoesEmail Boolean @default(true)
   idioma            String  @default("pt")
 
-  documentos Documento[]
-  atividades Atividade[]
+  documentos      Documento[]
+  atividades      Atividade[]
+  sistemasCriados Sistema[]   @relation("CriadorDoSistema")
+  notificacoes    Notificacao[]
 }
 
 model Documento {
@@ -51,7 +53,8 @@ model Documento {
   sistemaId Int?
   sistema   Sistema? @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
 
-  atividades Atividade[]
+  atividades   Atividade[]
+  notificacoes Notificacao[]
 }
 
 model Categoria {
@@ -88,11 +91,18 @@ model Sistema {
 
 
   infraestruturas SistemaInfraestrutura[]
+  subdominios Subdominio[]
 
   plataformaFrontendId Int?
   plataformaFrontend   Plataforma? @relation("FrontendDoSistema", fields: [plataformaFrontendId], references: [id], onDelete: SetNull)
 
+  // Quem criou o sistema: só essa pessoa (ou um ADMIN) o pode editar e eliminar.
+  // Nulo nos sistemas antigos sem registo de criação, e se o utilizador for eliminado.
+  criadoPorId Int?
+  criadoPor   Usuario? @relation("CriadorDoSistema", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
   @@index([plataformaFrontendId])
+  @@index([criadoPorId])
   @@map("sistemas")
 }
     
@@ -133,6 +143,7 @@ model Dominio {
   plataformaId Int
   plataforma   Plataforma @relation(fields: [plataformaId], references: [id], onDelete: Restrict)
   subdominios Subdominio[]
+  notificacoes Notificacao[]
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
@@ -140,7 +151,7 @@ model Dominio {
   @@map("dominios")
 }
 
-// A / AAAA → servidorId preenchido | CNAME → destino preenchido (validado na API)
+// A / AAAA → servidorId preenchido | CNAME e os restantes → destino preenchido (validado na API)
 model Subdominio {
   id      Int     @id @default(autoincrement())
   nome    String  @db.VarChar(255) // só o prefixo, ex: "app"
@@ -153,18 +164,22 @@ model Subdominio {
   servidorId Int?
   servidor   Servidor? @relation(fields: [servidorId], references: [id], onDelete: SetNull)
 
-  sistemaInfraestruturaId Int                   @unique
-  sistemaInfraestrutura   SistemaInfraestrutura @relation(fields: [sistemaInfraestruturaId], references: [id], onDelete: Cascade)
+  // Endereço público do sistema num ambiente: há um por sistema e ambiente
+  sistemaId Int
+  sistema   Sistema      @relation(fields: [sistemaId], references: [id], onDelete: Cascade)
+  ambiente  TipoAmbiente
+
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
 
-  
+  // O mesmo nome pode ter vários tipos (ex: "@" com MX, TXT e NS),
+  // mas não o mesmo tipo repetido
   @@unique([dominioId, nome, tipoDns])
+  @@unique([sistemaId, ambiente])
   @@index([dominioId])
   @@index([servidorId])
   @@map("subdominios")
 }
-
 
 model Servidor {
   id                  Int                  @id @default(autoincrement())
@@ -241,7 +256,7 @@ model SistemaInfraestrutura {
   cloudProvedor String? @db.Text // valor encriptado (AES-256-GCM)
 
   credenciais CredencialSistema[]
-  subdominio  Subdominio?
+
 
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
@@ -279,6 +294,45 @@ model Atividade {
 
   sistemaId Int?
   sistema   Sistema? @relation(fields: [sistemaId], references: [id], onDelete: SetNull)
+}
+
+// Uma linha por destinatário. O texto mostrado monta-se no frontend a partir do tipo
+// (assim segue o idioma de quem lê); "referencia" guarda o título do documento ou o
+// nome do domínio, para a notificação continuar legível se esse registo for apagado.
+model Notificacao {
+  id         Int             @id @default(autoincrement())
+  tipo       TipoNotificacao
+  referencia String          @db.VarChar(255)
+  mensagem   String?         @db.Text // motivo da rejeição
+  dataLimite DateTime?       // data de expiração do domínio
+  lida       Boolean         @default(false)
+  criadoEm   DateTime        @default(now())
+
+  // Só nos avisos de domínio: impede repetir o mesmo aviso para a mesma data de expiração
+  chave String? @db.VarChar(100)
+
+  usuarioId Int
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  documentoId Int?
+  documento   Documento? @relation(fields: [documentoId], references: [id], onDelete: SetNull)
+
+  dominioId Int?
+  dominio   Dominio? @relation(fields: [dominioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, chave])
+  @@index([usuarioId, lida])
+  @@index([documentoId])
+  @@index([dominioId])
+  @@map("notificacoes")
+}
+
+enum TipoNotificacao {
+  DOCUMENTO_SUBMETIDO // para os ADMIN
+  DOCUMENTO_APROVADO  // para quem submeteu
+  DOCUMENTO_REJEITADO // para quem submeteu, com o motivo
+  DOMINIO_A_EXPIRAR   // para os ADMIN
+  DOMINIO_EXPIRADO    // para os ADMIN
 }
 
 enum EstadoDocumento {

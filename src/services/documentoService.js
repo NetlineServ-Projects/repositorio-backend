@@ -4,6 +4,7 @@ const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { parseId, formatarDocumento } = require("../utils/fileHelper");
 const atividadeService = require("./atividadeService");
+const notificacaoService = require("./notificacaoService");
 
 const includePadrao = {
   categoria: true,
@@ -96,14 +97,38 @@ exports.criarDocumento = async (dados, usuario) => {
       documentoId: documento.id,
     });
 
+    // Um documento à espera de aprovação avisa os ADMIN, para irem ao painel de aprovações
+    if (documento.estado === "PENDENTE") {
+      await notificacaoService.notificarAdmins(tx, {
+        tipo: "DOCUMENTO_SUBMETIDO",
+        referencia: documento.titulo,
+        documentoId: documento.id,
+        excetoUsuarioId: usuarioIdNum,
+      });
+    }
+
     return documento;
   });
 
   return formatarDocumento(novoDocumento);
 };
 
-exports.listarDocumentos = async (perfil, apenasLixeira = false) => {
-  const where = perfil === "ADMIN" ? {} : { categoria: { sensivel: false } };
+// Um FUNCIONARIO só vê documentos publicados (APROVADO) e os que ele próprio submeteu;
+// os pendentes/rejeitados dos outros só existem para quem os submeteu e para os ADMIN
+function podeVerDocumento(documento, usuario) {
+  if (usuario.perfil === "ADMIN") return true;
+  if (documento.categoria?.sensivel) return false;
+  return documento.estado === "APROVADO" || documento.usuarioId === Number(usuario.id);
+}
+
+exports.listarDocumentos = async (usuario, apenasLixeira = false) => {
+  const where =
+    usuario.perfil === "ADMIN"
+      ? {}
+      : {
+          categoria: { sensivel: false },
+          OR: [{ estado: "APROVADO" }, { usuarioId: Number(usuario.id) }],
+        };
   where.apagadoEm = apenasLixeira ? { not: null } : null;
 
   const documentos = await prisma.documento.findMany({
@@ -115,7 +140,7 @@ exports.listarDocumentos = async (perfil, apenasLixeira = false) => {
   return documentos.map(formatarDocumento);
 };
 
-exports.buscarDocumentoPorId = async (id, perfil) => {
+exports.buscarDocumentoPorId = async (id, usuario) => {
   const idNum = parseId(id, MSG.VALIDATION.INVALID_ID);
 
   const documento = await prisma.documento.findUnique({
@@ -125,7 +150,7 @@ exports.buscarDocumentoPorId = async (id, perfil) => {
 
   if (!documento) throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
 
-  if (documento.categoria.sensivel && perfil !== "ADMIN") {
+  if (!podeVerDocumento(documento, usuario)) {
     throw new AppError(MSG.DOCUMENTO.NOT_FOUND, HTTP_STATUS.NOT_FOUND);
   }
 
@@ -158,6 +183,19 @@ exports.atualizarDocumento = async (id, dados, perfil, usuarioAtual) => {
     const acao = acaoDeAtualizacao(dadosParaAtualizar);
     if (acao) {
       await atividadeService.registrar(tx, { usuarioId: usuarioIdNum, acao, documentoId: documento.id });
+    }
+
+    // Quem submeteu fica a saber da decisão (com o motivo, se for rejeitado)
+    const decisao = dadosParaAtualizar.estado;
+    const mudouDeEstado = decisao && decisao !== documentoExiste.estado;
+    if (mudouDeEstado && ["APROVADO", "REJEITADO"].includes(decisao) && documento.usuarioId !== usuarioIdNum) {
+      await notificacaoService.notificarUsuario(tx, {
+        usuarioId: documento.usuarioId,
+        tipo: decisao === "APROVADO" ? "DOCUMENTO_APROVADO" : "DOCUMENTO_REJEITADO",
+        referencia: documento.titulo,
+        mensagem: decisao === "REJEITADO" ? documento.motivoRejeicao : null,
+        documentoId: documento.id,
+      });
     }
 
     return documento;
