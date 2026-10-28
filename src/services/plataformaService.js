@@ -185,8 +185,11 @@ const SELECT_ARVORE = {
     },
     orderBy: { nome: "asc" },
   },
-  // 3. Sistemas ligados directamente à plataforma sem servidor dedicado (ex: Vercel)
-  infraestruturas: SELECT_INFRAESTRUTURAS_ARVORE,
+  // 3. Backends que correm directamente na plataforma, sem servidor (os que têm servidor
+  //    já aparecem dentro dele; incluí-los aqui duplicava-os)
+  infraestruturas: { ...SELECT_INFRAESTRUTURAS_ARVORE, where: { servidorId: null } },
+  // Frontends alojados nesta plataforma (ex: Vercel)
+  sistemasFrontend: { select: { id: true, nome: true, status: true, versaoAtual: true }, orderBy: { nome: "asc" } },
 
   // 4. Imagens (se for CONTAINERIZACAO)
   imagens: {
@@ -197,6 +200,8 @@ const SELECT_ARVORE = {
       visibilidade: true,
       origem: true,
       ativo: true,
+      // Backends que correm a partir desta imagem (noutra plataforma)
+      infraestruturas: SELECT_INFRAESTRUTURAS_ARVORE,
     },
     orderBy: [{ nome: "asc" }, { tag: "asc" }],
   },
@@ -262,6 +267,7 @@ function formatarArvore(plataforma) {
 
   // CLOUD_BASE_DADOS ou CONTAINERIZACAO
   return {
+    imagens,
     ...resto,
     servidores: servidores.map((srv) => {
       const { ipCifrado, subdominios = [], ...dadosServidor } = srv;

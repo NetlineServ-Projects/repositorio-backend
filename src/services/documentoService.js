@@ -11,6 +11,10 @@ const includePadrao = {
   usuario: {
     select: { id: true, nome: true, email: true },
   },
+  // Documentos anexados a partir de um sistema dizem a que sistema pertencem
+  sistema: {
+    select: { id: true, nome: true },
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -23,9 +27,9 @@ function estadoInicialParaCriacao(perfil) {
   return perfil === "ADMIN" ? "APROVADO" : "PENDENTE";
 }
 
-function acaoDeCriacao(perfil, foiAnexadoASistema) {
+function acaoDeCriacao(perfil, nomeSistema) {
   const base = perfil === "ADMIN" ? "publicou o documento" : "submeteu o documento";
-  return foiAnexadoASistema ? `${base} (anexado a um sistema)` : base;
+  return nomeSistema ? `${base} no sistema "${nomeSistema}"` : base;
 }
 
 function calcularMudancaEstado(dados, perfil) {
@@ -93,15 +97,17 @@ exports.criarDocumento = async (dados, usuario) => {
 
     await atividadeService.registrar(tx, {
       usuarioId: usuarioIdNum,
-      acao: acaoDeCriacao(usuario.perfil, Boolean(sistemaIdNum)),
+      acao: acaoDeCriacao(usuario.perfil, documento.sistema?.nome),
       documentoId: documento.id,
+      sistemaId: documento.sistemaId ?? undefined,
     });
 
     // Um documento à espera de aprovação avisa os ADMIN, para irem ao painel de aprovações
     if (documento.estado === "PENDENTE") {
       await notificacaoService.notificarAdmins(tx, {
         tipo: "DOCUMENTO_SUBMETIDO",
-        referencia: documento.titulo,
+        // O admin vê logo a que sistema o documento pertence
+        referencia: documento.sistema ? `${documento.titulo} · ${documento.sistema.nome}` : documento.titulo,
         documentoId: documento.id,
         excetoUsuarioId: usuarioIdNum,
       });
@@ -120,6 +126,9 @@ function podeVerDocumento(documento, usuario) {
   if (documento.categoria?.sensivel) return false;
   return documento.estado === "APROVADO" || documento.usuarioId === Number(usuario.id);
 }
+
+// Também usada para servir os ficheiros em /uploads (middleware ficheirosProtegidos)
+exports.podeVerDocumento = podeVerDocumento;
 
 exports.listarDocumentos = async (usuario, apenasLixeira = false) => {
   const where =

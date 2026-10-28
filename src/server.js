@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 const path = require("path");
 require("dotenv").config();
 
@@ -16,6 +17,8 @@ const routesV1 = require("./routes/v1");
 
 // Importa o middleware de erro
 const errorMiddleware = require("./middlewares/errorMiddleware");
+const authMiddleware = require("./middlewares/authMiddleware");
+const autorizarFicheiro = require("./middlewares/ficheirosProtegidos");
 
 const app = express();
 
@@ -27,12 +30,16 @@ app.use(
     })
 );
 app.use(express.json());
+app.use(cookieParser()); // lê o cookie da sessão (netline_sessao)
 app.use(languageMiddleware);
 
-// Tornar a pasta de uploads pública estaticamente
+// Ficheiros enviados: só com sessão iniciada e, nos documentos, só para quem os pode ver.
+// O browser envia o cookie da sessão sozinho em <img>, links e no visualizador de PDF.
 app.use(
     "/uploads",
-    express.static(path.join(__dirname, "..", "uploads"))
+    authMiddleware,
+    autorizarFicheiro,
+    express.static(path.join(__dirname, "..", "uploads"), { index: false, dotfiles: "deny" })
 );
 
 // Rota base

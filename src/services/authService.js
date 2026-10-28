@@ -7,25 +7,38 @@ const MSG = require("../utils/messages");
 const HTTP_STATUS = require("../utils/httpsStatus");
 const AppError = require("../utils/AppError");
 const { formatarUsuario } = require("../utils/fileHelper");
+const limiteLogin = require("../utils/limiteTentativasLogin");
+
+// Hash de uma palavra-passe que ninguém tem: quando o e-mail não existe compara-se contra ele,
+// para a resposta demorar o mesmo e não denunciar quais e-mails estão registados
+const HASH_FALSO = bcrypt.hashSync("netline-utilizador-inexistente", 10);
 
 const DURACAO_TOKEN_ELEVADO = "3m";
 
 // LOGIN
+// Qualquer falha (e-mail inexistente, palavra-passe errada, conta desativada) dá a mesma
+// mensagem e o mesmo código: quem anda a testar não fica a saber em que parte errou
 exports.login = async ({ email, senha }) => {
+
+    const bloqueio = limiteLogin.segundosDeBloqueio(email);
+    if (bloqueio > 0) {
+        const erro = new AppError(MSG.AUTH.MUITAS_TENTATIVAS, HTTP_STATUS.TOO_MANY_REQUESTS);
+        erro.retryAfter = bloqueio;
+        throw erro;
+    }
 
     const user = await prisma.usuario.findUnique({
         where: { email }
     });
 
-    if (!user) {
-        throw new AppError(MSG.AUTH.USER_NOT_FOUND, HTTP_STATUS.NOT_FOUND);
+    const senhaValida = await bcrypt.compare(senha, user?.senha ?? HASH_FALSO);
+
+    if (!user || !senhaValida || !user.ativo) {
+        limiteLogin.registarFalha(email);
+        throw new AppError(MSG.AUTH.CREDENCIAIS_INVALIDAS, HTTP_STATUS.UNAUTHORIZED);
     }
 
-    const senhaValida = await bcrypt.compare(senha, user.senha);
-
-    if (!senhaValida) {
-        throw new AppError(MSG.AUTH.INVALID_PASSWORD, HTTP_STATUS.UNAUTHORIZED);
-    }
+    limiteLogin.limpar(email);
 
     const token = jwt.sign(
         {

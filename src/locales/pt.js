@@ -1,6 +1,9 @@
 module.exports = {
     AUTH: {
-        LOGIN_SUCCESS: "Login realizado com sucesso.",
+        LOGIN_SUCCESS: "Sessão iniciada com sucesso.",
+        CREDENCIAIS_INVALIDAS: "Credenciais incorretas.",
+        MUITAS_TENTATIVAS: "Demasiadas tentativas falhadas. Aguarde 15 minutos e tente novamente.",
+        LOGOUT_SUCCESS: "Sessão terminada com sucesso.",
         USER_NOT_FOUND: "Utilizador não encontrado.",
         INVALID_PASSWORD: "Palavra-passe incorreta.",
 
@@ -20,7 +23,7 @@ module.exports = {
         UPDATED: "Utilizador atualizado com sucesso.",
         DELETED: "Utilizador eliminado com sucesso.",
         NOT_FOUND: "Utilizador não encontrado.",
-        EMAIL_ALREADY_EXISTS: "Já existe um utilizador com este email."
+        EMAIL_ALREADY_EXISTS: "Já existe um utilizador com este e-mail."
     },
 
     DOCUMENTO: {
@@ -50,7 +53,7 @@ module.exports = {
         NOT_FOUND: "Sistema não encontrado.",
         INFRAESTRUTURA_ATUALIZADA: "Dados de infraestrutura atualizados com sucesso.",
         CREDENCIAL_ADICIONADA: "Credencial adicionada com sucesso.",
-        CREDENCIAL_APAGADA: "Credencial apagada com sucesso.",
+        CREDENCIAL_APAGADA: "Credencial eliminada com sucesso.",
         INFRAESTRUTURA_OBTIDA: "Infraestrutura obtida com sucesso.",
         INFRAESTRUTURA_SEM_DADOS: "Este sistema ainda não tem infraestrutura registada.",
         CREDENCIAL_ATUALIZADA: "Credencial atualizada com sucesso.",
@@ -71,14 +74,14 @@ module.exports = {
     PLATAFORMA: {
         CREATED: "Plataforma criada com sucesso.",
         UPDATED: "Plataforma atualizada com sucesso.",
-        DELETED: "Plataforma apagada com sucesso.",
+        DELETED: "Plataforma eliminada com sucesso.",
         OBTIDA: "Plataforma obtida com sucesso.",
         LISTADAS: "Plataformas obtidas com sucesso.",
         ARVORE_OBTIDA: "Árvore de plataformas obtida com sucesso.",
         NOT_FOUND: "Plataforma não encontrada.",
         NOME_JA_EXISTE: "Já existe uma plataforma com este nome.",
         TIPO_INCOMPATIVEL: "Não é possível alterar o tipo: a plataforma tem registos associados incompatíveis com o novo tipo.",
-        TEM_DEPENDENCIAS: "Não é possível apagar a plataforma: ainda tem domínios, servidores, imagens ou sistemas associados.",
+        TEM_DEPENDENCIAS: "Não é possível eliminar a plataforma: ainda tem domínios, servidores, imagens ou sistemas associados.",
         CAMPOS_REGISTRY_INVALIDOS: "Os dados de registry só podem ser definidos em plataformas do tipo Containerização.",
         TOKEN_OBTIDO: "Token obtido com sucesso.",
         TOKEN_NAO_DEFINIDO: "Esta plataforma não tem token definido.",
@@ -92,21 +95,21 @@ module.exports = {
     SERVIDOR: {
         CREATED: "Servidor criado com sucesso.",
         UPDATED: "Servidor atualizado com sucesso.",
-        DELETED: "Servidor apagado com sucesso.",
+        DELETED: "Servidor eliminado com sucesso.",
         OBTIDO: "Servidor obtido com sucesso.",
         LISTADOS: "Servidores obtidos com sucesso.",
         NOT_FOUND: "Servidor não encontrado.",
         IP_JA_EXISTE: "Já existe um servidor com este IP nesta plataforma.",
         PLATAFORMA_INVALIDA: "Só é possível registar servidores em plataformas do tipo Cloud/Base de dados.",
         PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
-        TEM_DEPENDENCIAS: "Não é possível apagar o servidor: ainda tem subdomínios ou sistemas associados.",
-        PASSWORD_OBTIDA: "Password do servidor obtida com sucesso.",
+        TEM_DEPENDENCIAS: "Não é possível eliminar o servidor: ainda tem subdomínios ou sistemas associados.",
+        PASSWORD_OBTIDA: "Palavra-passe do servidor obtida com sucesso.",
     },
 
     IMAGEM: {
         CREATED: "Imagem registada com sucesso.",
         UPDATED: "Imagem atualizada com sucesso.",
-        DELETED: "Imagem apagada com sucesso.",
+        DELETED: "Imagem eliminada com sucesso.",
         OBTIDA: "Imagem obtida com sucesso.",
         LISTADAS: "Imagens obtidas com sucesso.",
         NOT_FOUND: "Imagem não encontrada.",
@@ -118,20 +121,20 @@ module.exports = {
     DOMINIO: {
         CREATED: "Domínio criado com sucesso.",
         UPDATED: "Domínio atualizado com sucesso.",
-        DELETED: "Domínio apagado com sucesso.",
+        DELETED: "Domínio eliminado com sucesso.",
         OBTIDO: "Domínio obtido com sucesso.",
         LISTADOS: "Domínios obtidos com sucesso.",
         NOT_FOUND: "Domínio não encontrado.",
         NOME_JA_EXISTE: "Já existe um domínio com este nome.",
         PLATAFORMA_INVALIDA: "Só é possível registar domínios em plataformas do tipo Gestão de domínio.",
         PLATAFORMA_INATIVA: "A plataforma selecionada está inativa.",
-        TEM_DEPENDENCIAS: "Não é possível apagar o domínio: ainda tem subdomínios associados.",
+        TEM_DEPENDENCIAS: "Não é possível eliminar o domínio: ainda tem subdomínios associados.",
     },
 
     SUBDOMINIO: {
         CREATED: "Subdomínio criado com sucesso.",
         UPDATED: "Subdomínio atualizado com sucesso.",
-        DELETED: "Subdomínio apagado com sucesso.",
+        DELETED: "Subdomínio eliminado com sucesso.",
         OBTIDO: "Subdomínio obtido com sucesso.",
         LISTADOS: "Subdomínios obtidos com sucesso.",
         NOT_FOUND: "Subdomínio não encontrado.",

@@ -15,6 +15,8 @@ function errorMiddleware(err, req, res, next) {
 
     // ── AppError: erro operacional deliberado lançado pelo service ────────────
     if (err.statusCode) {
+        // Ex: login bloqueado por tentativas a mais (429) diz quando se pode voltar a tentar
+        if (err.retryAfter) res.set("Retry-After", String(err.retryAfter));
         return response.error(res, err.message, err.statusCode);
     }
 

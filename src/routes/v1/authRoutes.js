@@ -15,6 +15,7 @@ const {
 
 // Login (rota pública)
 router.post("/login", validate(loginSchema), authController.login);
+router.post("/logout", authController.logout);
 
 // Dados do utilizador autenticado
 router.get("/me", authMiddleware, authController.me);

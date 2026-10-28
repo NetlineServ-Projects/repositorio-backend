@@ -3,14 +3,31 @@ const usuarioService = require("../services/usuarioService");
 const HTTP = require("../utils/httpsStatus");
 const MSG = require("../utils/messages");
 const response = require("../utils/response");
+const { definirCookieSessao, limparCookieSessao } = require("../utils/cookieSessao");
 
 // =======================================
 // LOGIN
 // =======================================
 exports.login = async (req, res, next) => {
     try {
-        const result = await authService.login(req.body);
-        return response.success(res, MSG.AUTH.LOGIN_SUCCESS, result, HTTP.OK);
+        const { token, user } = await authService.login(req.body);
+        // O token vai num cookie HttpOnly e não no corpo: o JavaScript da página nunca o vê
+        definirCookieSessao(res, token);
+        return response.success(res, MSG.AUTH.LOGIN_SUCCESS, { user }, HTTP.OK);
+    } catch (error) {
+        next(error);
+    }
+};
+
+// =======================================
+// LOGOUT
+// Só o servidor consegue apagar um cookie HttpOnly. Não exige sessão válida:
+// também serve para limpar um cookie que já expirou.
+// =======================================
+exports.logout = async (req, res, next) => {
+    try {
+        limparCookieSessao(res);
+        return response.success(res, MSG.AUTH.LOGOUT_SUCCESS, null, HTTP.OK);
     } catch (error) {
         next(error);
     }

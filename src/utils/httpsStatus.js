@@ -9,6 +9,7 @@ const HTTP_STATUS = {
     // Erros do cliente
     BAD_REQUEST: 400,
     UNAUTHORIZED: 401,
+    TOO_MANY_REQUESTS: 429,
     FORBIDDEN: 403,
     NOT_FOUND: 404,
     METHOD_NOT_ALLOWED: 405,

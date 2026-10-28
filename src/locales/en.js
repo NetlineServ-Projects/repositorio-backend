@@ -1,5 +1,8 @@
 module.exports = {
     AUTH: {
+        LOGOUT_SUCCESS: "Logged out successfully.",
+        CREDENCIAIS_INVALIDAS: "Invalid credentials.",
+        MUITAS_TENTATIVAS: "Too many failed attempts. Wait 15 minutes and try again.",
         LOGIN_SUCCESS: "Login successful.",
         USER_NOT_FOUND: "User not found.",
         INVALID_PASSWORD: "Incorrect password.",
