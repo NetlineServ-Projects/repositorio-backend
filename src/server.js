@@ -3,6 +3,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const fs = require("fs");
+const prisma = require("./config/prisma");
 require("dotenv").config();
 
 const { validarEnvVars } = require("./utils/fileHelper");
@@ -70,6 +71,21 @@ app.use(errorMiddleware);
 // Configuração da porta e inicialização do servidor
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+const servidor = app.listen(PORT, () => {
     console.log(`Servidor iniciado com sucesso na porta ${PORT}`);
 });
+
+// Paragem ordenada (docker stop, deploy): deixa de aceitar pedidos, termina os que estão
+// a meio e fecha a ligação à base de dados. No contentor o node é o processo 1 e, sem isto,
+// ignorava o sinal até o Docker o matar à força.
+function terminar(sinal) {
+    console.log(`${sinal} recebido: a terminar...`);
+    servidor.close(async () => {
+        await prisma.$disconnect().catch(() => {});
+        process.exit(0);
+    });
+    // Se algum pedido ficar preso, não espera para sempre
+    setTimeout(() => process.exit(1), 8000).unref();
+}
+process.on("SIGTERM", () => terminar("SIGTERM"));
+process.on("SIGINT", () => terminar("SIGINT"));
