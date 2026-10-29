@@ -4,3 +4,7 @@ node_modules
 
 /generated/prisma
 backup_*.sql
+
+# Ficheiros enviados pelos utilizadores (documentos, fotografias, logótipos): são dados,
+# não código, e alguns são confidenciais. As pastas criam-se ao arrancar (server.js).
+/uploads/

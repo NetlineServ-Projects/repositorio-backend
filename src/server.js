@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 
 const { validarEnvVars } = require("./utils/fileHelper");
@@ -32,6 +33,17 @@ app.use(
 app.use(express.json());
 app.use(cookieParser()); // lê o cookie da sessão (netline_sessao)
 app.use(languageMiddleware);
+
+// As pastas dos ficheiros enviados não estão no Git (os ficheiros são dados, não código):
+// criam-se aqui, para um clone novo ou um volume vazio funcionar logo
+for (const pasta of ["avatars", "documentos", "plataformas"]) {
+    try {
+        fs.mkdirSync(path.join(__dirname, "..", "uploads", pasta), { recursive: true });
+    } catch (erro) {
+        // Não impede a API de arrancar; só os envios para essa pasta vão falhar
+        console.error(`Não foi possível criar uploads/${pasta} (${erro.code}). Verifique as permissões da pasta uploads.`);
+    }
+}
 
 // Ficheiros enviados: só com sessão iniciada e, nos documentos, só para quem os pode ver.
 // O browser envia o cookie da sessão sozinho em <img>, links e no visualizador de PDF.

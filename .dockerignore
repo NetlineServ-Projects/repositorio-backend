@@ -1,9 +1,18 @@
+# Só o código entra na imagem: nada de segredos, dados nem ficheiros de desenvolvimento
 node_modules
 npm-debug.log
 .env
 .env.*
 !.env.example
 uploads
+logs
+backup_*.sql
+*.sql.gz
 .git
 .gitignore
+.github
+.vscode
 README.md
+docker-compose.yml
+Dockerfile
+.dockerignore
